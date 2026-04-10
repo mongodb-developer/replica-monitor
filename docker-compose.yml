@@ -1,0 +1,45 @@
+# Base infrastructure only. MongoDB replica nodes and ApplicationServer are defined in
+# docker-compose.generated.yml (written when a configuration template is applied).
+services:
+  NetemHelper:
+    image: nicolaka/netshoot
+    container_name: netem-helper
+    pid: "host"
+    privileged: true
+    command: ["tail", "-f", "/dev/null"]
+    restart: no
+
+# Regional/inter-region networks are created before `compose up` (see stack lifecycle) so subnets
+# and Compose labels stay consistent. Referenced as external so Compose does not fight existing
+# networks that were created outside this project or with missing labels.
+networks:
+  amer-net:
+    name: amer-net
+    external: true
+  latam-net:
+    name: latam-net
+    external: true
+  emea-net:
+    name: emea-net
+    external: true
+  apac-net:
+    name: apac-net
+    external: true
+  amer-emea-net:
+    name: amer-emea-net
+    external: true
+  amer-apac-net:
+    name: amer-apac-net
+    external: true
+  amer-latam-net:
+    name: amer-latam-net
+    external: true
+  latam-emea-net:
+    name: latam-emea-net
+    external: true
+  latam-apac-net:
+    name: latam-apac-net
+    external: true
+  emea-apac-net:
+    name: emea-apac-net
+    external: true

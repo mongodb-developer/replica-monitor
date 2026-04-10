@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mongo Replica Set Monitor</title>
+    <link rel="stylesheet" href="/vendor/leaflet/leaflet.css" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="ui-readonly">
+    <main class="container">
+      <header class="page-header">
+        <div class="page-title-row">
+          <h1>Mongo Replica Set Monitor</h1>
+          <div class="view-toggle" role="group" aria-label="Dashboard layout">
+            <button id="standardLayoutBtn" class="view-toggle-btn active" type="button">Node Monitor Layout</button>
+            <button id="geographicLayoutBtn" class="view-toggle-btn" type="button">Geographic Layout</button>
+          </div>
+          <span id="connectionBadge" class="connection-badge reconnecting">Reconnecting</span>
+          <span id="statusText">Waiting for data...</span>
+        </div>
+        <section class="controls">
+          <button id="applyConfigurationBtn" type="button">Configurations</button>
+          <button id="applicationServerSettingsBtn" type="button">Settings ⚙</button>
+          <button id="helpBtn" type="button">Help</button>
+          <button id="adminBtn" type="button" class="admin-btn">Admin</button>
+        </section>
+      </header>
+
+      <div class="dashboard-grid">
+        <div class="replica-column">
+          <section class="chart">
+            <h2>Replica Topology</h2>
+            <svg id="topology" viewBox="0 0 900 420" role="img" aria-label="Replica set topology"></svg>
+          </section>
+
+          <section id="geographicMapSection" class="table-section hidden">
+            <div class="table-section-header">
+              <h2>Global Data Center Map</h2>
+            </div>
+            <div id="geographicMap" class="world-map" aria-label="World map with data center pins"></div>
+            <div id="mapPulseLegend" class="map-pulse-legend" aria-live="polite"></div>
+            <div id="mapZoneLegend" class="map-zone-legend hidden" aria-live="polite"></div>
+          </section>
+
+          <div class="replica-tables-cluster">
+            <section id="replicaMembersSection" class="table-section">
+              <div class="table-section-header">
+                <h2>Replica Members</h2>
+                <button id="toggleReplicaMembersBtn" type="button" class="section-toggle-btn" aria-expanded="true">
+                  Collapse
+                </button>
+              </div>
+              <div id="replicaMembersContent" class="collapsible-content">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Role</th>
+                      <th>Data Center</th>
+                      <th>Shard</th>
+                      <th>State</th>
+                      <th>Priority</th>
+                      <th>Health</th>
+                    </tr>
+                  </thead>
+                  <tbody id="membersTableBody"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section id="shardDataSection" class="table-section hidden">
+              <div class="table-section-header">
+                <h2>Shard Data</h2>
+                <button id="toggleShardDataBtn" type="button" class="section-toggle-btn" aria-expanded="true">
+                  Collapse
+                </button>
+              </div>
+              <div id="shardDataContent" class="collapsible-content">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Shard</th>
+                      <th>Zones</th>
+                      <th>Most Recent Counter</th>
+                    </tr>
+                  </thead>
+                  <tbody id="shardDataTableBody"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <section class="application-server-section">
+          <div class="application-server-section-header table-section-header">
+            <h2 id="workloadConsoleLabel">Workload Console 🇺🇸</h2>
+            <button
+              id="toggleWorkloadConsolePanelBtn"
+              type="button"
+              class="section-toggle-btn workload-console-panel-toggle"
+              aria-expanded="true"
+              aria-controls="workloadConsolePanelContent"
+            >
+              Collapse
+            </button>
+          </div>
+          <div id="workloadConsoleCollapsedRail" class="workload-console-collapsed-rail" aria-hidden="true">
+            <span class="workload-console-collapsed-rail-label">Workload</span>
+            <button
+              id="workloadConsoleRailExpandBtn"
+              type="button"
+              class="section-toggle-btn workload-console-rail-expand-btn"
+              aria-controls="workloadConsolePanelContent"
+            >
+              Expand
+            </button>
+          </div>
+          <div id="workloadConsolePanelContent">
+          <div class="application-server-controls">
+            <button id="applicationServerStartBtn" type="button">Start Workload</button>
+            <button id="applicationServerStopBtn" type="button">Stop Workload</button>
+          </div>
+          <div class="application-server-select-row">
+            <div class="application-server-select-group">
+              <label for="userLocationSelect">User's Location</label>
+              <select id="userLocationSelect" name="userLocation"></select>
+            </div>
+            <div class="application-server-select-group">
+              <label for="applicationServerLocationSelect">Application Server Location</label>
+              <select id="applicationServerLocationSelect" name="applicationServerLocation" required></select>
+            </div>
+          </div>
+          <div class="application-server-metrics">
+            <div class="application-server-summary-grid">
+              <div class="metric-item">
+                <span class="metric-label">Last read value</span>
+                <span id="lastCurrentValueValue" class="metric-value">N/A</span>
+              </div>
+              <div class="application-server-select-group">
+                <div class="application-server-inline-select-group">
+                  <label for="applicationServerReadPreferenceSelect">Read Preference</label>
+                  <select id="applicationServerReadPreferenceSelect" name="applicationServerReadPreference" required>
+                    <option value="primary">primary</option>
+                    <option value="primaryPreferred">primaryPreferred</option>
+                    <option value="secondary">secondary</option>
+                    <option value="secondaryPreferred">secondaryPreferred</option>
+                    <option value="nearest">nearest</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="metric-item metric-item-span-all chart-visibility-controls">
+              <span id="chartVisibilityLabel" class="metric-label">Visible charts</span>
+              <div class="chart-toggle-list node-layout-chart-toggle-list">
+                <label class="chart-toggle-item">
+                  <input id="toggleSinceWriteChart" type="checkbox" checked /> Time since last write
+                </label>
+                <label class="chart-toggle-item">
+                  <input id="toggleSinceReadChart" type="checkbox" checked /> Time since last read
+                </label>
+                <label class="chart-toggle-item">
+                  <input id="toggleNodeWriteLatencyChart" type="checkbox" checked /> Write latency
+                </label>
+                <label class="chart-toggle-item">
+                  <input id="toggleNodeReadLatencyChart" type="checkbox" checked /> Read latency
+                </label>
+              </div>
+              <div class="chart-toggle-list geographic-layout-chart-toggle-list hidden">
+                <label class="chart-toggle-item">
+                  <input id="toggleGeoWriteLatencyChart" type="checkbox" /> Write latency
+                </label>
+                <label class="chart-toggle-item">
+                  <input id="toggleGeoReadLatencyChart" type="checkbox" checked /> Read latency
+                </label>
+              </div>
+            </div>
+            <div class="application-server-chart-grid">
+              <div id="sinceWriteChartCard" class="metric-item">
+                <span class="metric-label">Time since last write (30s)</span>
+                <canvas id="sinceWriteChart" class="metric-chart" height="110"></canvas>
+              </div>
+              <div id="sinceReadChartCard" class="metric-item">
+                <span class="metric-label">Time since last read (30s)</span>
+                <canvas id="sinceReadChart" class="metric-chart" height="110"></canvas>
+              </div>
+              <div id="writeLatencyChartCard" class="metric-item">
+                <span class="metric-label">Write latency (30s)</span>
+                <canvas id="writeLatencyChart" class="metric-chart" height="110"></canvas>
+              </div>
+              <div id="readLatencyChartCard" class="metric-item">
+                <span class="metric-label">Read latency (30s)</span>
+                <canvas id="readLatencyChart" class="metric-chart" height="110"></canvas>
+              </div>
+            </div>
+            <div class="application-server-console-wrap metric-item-span-all">
+              <div class="table-section-header">
+                <h3>Console Output</h3>
+                <button
+                  id="applicationServerToggleConsoleBtn"
+                  type="button"
+                  class="section-toggle-btn"
+                  aria-expanded="false"
+                >
+                  Expand
+                </button>
+              </div>
+              <div id="applicationServerConsoleContent" class="collapsible-content collapsed">
+                <pre id="applicationServerConsole" class="application-server-console">Waiting for workload output...</pre>
+              </div>
+            </div>
+          </div>
+          </div>
+        </section>
+
+        <section id="geoNodeTableSection" class="table-section hidden">
+          <div class="table-section-header">
+            <h2>Data Center Nodes</h2>
+            <button id="toggleGeoNodeTableBtn" type="button" class="section-toggle-btn" aria-expanded="true">
+              Collapse
+            </button>
+          </div>
+          <div id="geoNodeTableContent" class="collapsible-content">
+            <div id="geoNodeTableHint" class="zones-inline-hint">Select a data center pin to view member details.</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Role</th>
+                  <th>Data Center</th>
+                  <th>Shard</th>
+                  <th>State</th>
+                  <th>Priority</th>
+                  <th>Health</th>
+                  <th>Zones</th>
+                  <th>Last Read Value</th>
+                </tr>
+              </thead>
+              <tbody id="geoMembersTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <div id="nodeContextMenu" class="context-menu hidden" role="menu" aria-hidden="true">
+      <button type="button" class="context-menu-item" data-action="stop-mongodb-graceful" role="menuitem">
+        Stop MongoDB (Graceful)
+      </button>
+      <button type="button" class="context-menu-item" data-action="stop-mongodb-hard" role="menuitem">
+        Crash MongoDB (Hard Stop)
+      </button>
+      <button type="button" class="context-menu-item" data-action="increase-mongodb-priority" role="menuitem">
+        Increase MongoDB Priority
+      </button>
+      <button type="button" class="context-menu-item" data-action="decrease-mongodb-priority" role="menuitem">
+        Decrease MongoDB Priority
+      </button>
+      <button type="button" class="context-menu-item" data-action="stop-container" role="menuitem">
+        Stop Server
+      </button>
+      <button type="button" class="context-menu-item" data-action="network-isolate-container" role="menuitem">
+        Server Network Failure
+      </button>
+    </div>
+
+    <div id="canvasContextMenu" class="context-menu hidden" role="menu" aria-hidden="true">
+      <button type="button" class="context-menu-item" data-action="add-node" role="menuitem">
+        Add node
+      </button>
+      <button
+        id="canvasShardReplicaSetMenuItem"
+        type="button"
+        class="context-menu-item"
+        data-action="shard-replica-set"
+        role="menuitem"
+      >
+        Shard Replica Set
+      </button>
+      <button
+        id="canvasDataCenterNetworkMenuItem"
+        type="button"
+        class="context-menu-item hidden"
+        data-action="network-isolate-datacenter"
+        role="menuitem"
+      >
+        Data Center Network Failure
+      </button>
+    </div>
+
+    <div id="addNodeModalOverlay" class="modal-overlay hidden" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="addNodeModalTitle">
+        <h3 id="addNodeModalTitle">Add Replica Node</h3>
+        <form id="addNodeForm" class="modal-form">
+          <label for="addNodeName">Node name</label>
+          <input id="addNodeName" name="nodeName" type="text" required autocomplete="off" />
+
+          <label for="addNodeRole">Node type</label>
+          <select id="addNodeRole" name="nodeRole">
+            <option value="voting">Voting</option>
+            <option value="analytics">Analytics (read only)</option>
+          </select>
+
+          <label for="addNodeDataCenter">Data center</label>
+          <select id="addNodeDataCenter" name="nodeDataCenter"></select>
+
+          <div id="addNodeShardGroup" class="hidden">
+            <label for="addNodeShardName">Shard name</label>
+            <input
+              id="addNodeShardName"
+              name="nodeShardName"
+              type="text"
+              autocomplete="off"
+              placeholder="e.g. shard2"
+            />
+          </div>
+
+          <div class="modal-actions">
+            <button id="addNodeCancelBtn" type="button">Cancel</button>
+            <button id="addNodeSubmitBtn" type="submit">Add Node</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="applicationServerLocationModalOverlay" class="modal-overlay hidden" aria-hidden="true">
+      <div class="modal settings-modal" role="dialog" aria-modal="true" aria-labelledby="applicationServerLocationModalTitle">
+        <h3 id="applicationServerLocationModalTitle">Settings</h3>
+        <form id="applicationServerLocationForm" class="modal-form">
+          <fieldset class="settings-group">
+            <legend>Application Server</legend>
+
+            <label for="applicationServerWriteConcernSelect">MongoDB Write Concern</label>
+            <select id="applicationServerWriteConcernSelect" name="applicationServerWriteConcern" required>
+              <option value="majority">majority</option>
+            </select>
+
+            <label for="applicationServerReadConcernSelect">MongoDB Read Concern</label>
+            <select id="applicationServerReadConcernSelect" name="applicationServerReadConcern" required>
+              <option value="local">local</option>
+              <option value="available">available</option>
+              <option value="majority">majority</option>
+              <option value="linearizable">linearizable</option>
+              <option value="snapshot">snapshot</option>
+            </select>
+          </fieldset>
+
+          <fieldset class="settings-group">
+            <legend>General System</legend>
+
+            <label for="replicaSetElectionTimeoutInput">Replica set electionTimeout (ms)</label>
+            <input
+              id="replicaSetElectionTimeoutInput"
+              name="replicaSetElectionTimeout"
+              type="number"
+              inputmode="numeric"
+              min="1000"
+              max="10000"
+              step="1"
+              required
+            />
+
+            <button id="editZonesBtn" type="button" class="secondary-action hidden">Edit Zones</button>
+          </fieldset>
+
+          <fieldset class="settings-group">
+            <legend>Replica topology</legend>
+            <label class="settings-checkbox-label">
+              <input type="checkbox" id="topologyShowShardLabelsCheckbox" name="topologyShowShardLabels" />
+              Show shard names on replica topology nodes
+            </label>
+          </fieldset>
+
+          <div class="modal-actions">
+            <button id="applicationServerLocationCancelBtn" type="button">Cancel</button>
+            <button id="applicationServerLocationSaveBtn" type="submit">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="zonesModalOverlay" class="modal-overlay hidden" aria-hidden="true">
+      <div class="modal settings-modal zones-modal" role="dialog" aria-modal="true" aria-labelledby="zonesModalTitle">
+        <h3 id="zonesModalTitle">Edit Zones</h3>
+        <div class="zones-modal-content">
+          <div id="zonesList" class="zones-list"></div>
+          <button id="addZoneBtn" type="button" class="secondary-action">Add Zone</button>
+        </div>
+        <div class="modal-actions">
+          <button id="zonesCancelBtn" type="button">Cancel</button>
+          <button id="zonesSaveBtn" type="button">Save Zones</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="configurationTemplateModalOverlay" class="modal-overlay hidden" aria-hidden="true">
+      <div
+        class="modal settings-modal configuration-template-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="configurationTemplateModalTitle"
+      >
+        <h3 id="configurationTemplateModalTitle">Configurations</h3>
+        <p class="configuration-template-hint">Select a template to view its description.</p>
+        <div class="configuration-template-list-wrap">
+          <ul
+            id="configurationTemplateList"
+            class="configuration-template-list"
+            role="listbox"
+            aria-label="Configuration templates"
+          ></ul>
+        </div>
+        <p id="configurationTemplateDescriptionLabel" class="configuration-template-desc-label">Description</p>
+        <div
+          id="configurationTemplateDescription"
+          class="configuration-template-description"
+          tabindex="0"
+          role="region"
+          aria-labelledby="configurationTemplateDescriptionLabel"
+          aria-live="polite"
+        ></div>
+        <div class="configuration-template-save-row">
+          <button
+            id="saveConfigurationBtn"
+            type="button"
+            class="secondary-action"
+            disabled
+            title="Save over the template file last applied from disk (available after a configuration is deployed)"
+          >
+            Save template
+          </button>
+          <button
+            id="saveConfigurationAsBtn"
+            type="button"
+            class="secondary-action"
+            disabled
+            title="Save the current configuration as a new template file (available after a configuration is deployed)"
+          >
+            Save template as…
+          </button>
+        </div>
+        <div class="modal-actions">
+          <button id="configurationTemplateCancelBtn" type="button">Cancel</button>
+          <button id="configurationTemplateOkBtn" type="button" disabled>OK</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="configurationSaveModalOverlay" class="modal-overlay hidden" aria-hidden="true">
+      <div
+        class="modal settings-modal configuration-save-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="configurationSaveModalTitle"
+      >
+        <h3 id="configurationSaveModalTitle">Save configuration template</h3>
+        <p id="configurationSaveOverwriteHint" class="configuration-save-hint hidden" aria-live="polite"></p>
+        <div id="configurationSaveFilenameGroup" class="configuration-save-field-group">
+          <label for="saveTemplateFilenameInput">Filename</label>
+          <input
+            id="saveTemplateFilenameInput"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="e.g. my-cluster.json"
+          />
+        </div>
+        <div class="configuration-save-field-group">
+          <label for="saveTemplateNameInput">Template name</label>
+          <input id="saveTemplateNameInput" type="text" autocomplete="off" />
+        </div>
+        <div class="configuration-save-field-group">
+          <label for="saveTemplateDescriptionInput">Description</label>
+          <textarea id="saveTemplateDescriptionInput" rows="4"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button id="configurationSaveCancelBtn" type="button">Cancel</button>
+          <button id="configurationSaveSubmitBtn" type="button">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="deploymentProgressModalOverlay" class="modal-overlay hidden" aria-hidden="true">
+      <div
+        class="modal settings-modal deployment-progress-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="deploymentProgressModalTitle"
+      >
+        <h3 id="deploymentProgressModalTitle">Deployment in progress</h3>
+        <p id="deploymentProgressSubtitle" class="deployment-progress-subtitle"></p>
+        <div
+          id="deploymentProgressErrorLine"
+          class="deployment-progress-error hidden"
+          role="alert"
+          aria-live="assertive"
+        ></div>
+        <ul id="deploymentProgressStepsList" class="deployment-progress-steps" aria-live="polite"></ul>
+        <div class="modal-actions">
+          <button id="deploymentProgressModalCloseBtn" type="button" disabled>Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="adminModalOverlay" class="modal-overlay hidden" aria-hidden="true">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="adminModalTitle">
+        <h3 id="adminModalTitle">Admin access</h3>
+        <p id="adminModalHint" class="admin-modal-hint">
+          Enter the admin password to unlock controls for this browser session.
+        </p>
+        <form id="adminModalForm" class="modal-form">
+          <div id="adminPasswordFieldGroup">
+            <label for="adminPasswordInput">Password</label>
+            <input
+              id="adminPasswordInput"
+              name="adminPassword"
+              type="password"
+              autocomplete="current-password"
+            />
+          </div>
+          <div class="modal-actions">
+            <button id="adminModalCancelBtn" type="button">Cancel</button>
+            <button id="adminModalSubmitBtn" type="submit">Unlock</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="helpModalOverlay" class="modal-overlay hidden" aria-hidden="true">
+      <div class="modal help-modal" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle">
+        <div class="help-modal-header">
+          <h3 id="helpModalTitle">Help</h3>
+          <button id="helpModalCloseBtn" type="button" class="secondary-action">Close</button>
+        </div>
+        <div class="help-modal-layout">
+          <nav class="help-topic-nav" aria-label="Help topics">
+            <ul id="helpTopicList" class="help-topic-list"></ul>
+          </nav>
+          <section id="helpContent" class="help-content" tabindex="0" aria-live="polite">
+            <p>Select a topic to view help content.</p>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <script src="/vendor/leaflet/leaflet.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
+    <script src="/app.js" defer></script>
+  </body>
+</html>

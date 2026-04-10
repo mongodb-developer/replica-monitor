@@ -1,0 +1,139 @@
+{
+    "version": 1,
+    "name": "GCR Sharded Cluster (Consolidated)",
+    "description": "Two shards and optional zones spread across four regions with consolidated deployment profile.",
+    "dataCenters": [
+      {
+        "id": "amer-seattle-us",
+        "region": "AMER",
+        "name": "US_SEATTLE",
+        "city": "Seattle",
+        "country": "US",
+        "lat": 47.6062,
+        "lng": -122.3321
+      },
+      {
+        "id": "emea-frankfurt-de",
+        "region": "EMEA",
+        "name": "DE_FRANKFURT",
+        "city": "Frankfurt",
+        "country": "DE",
+        "lat": 50.1109,
+        "lng": 8.6821
+      },
+      {
+        "id": "apac-singapore-sg",
+        "region": "APAC",
+        "name": "SG_SINGAPORE",
+        "city": "Singapore",
+        "country": "SG",
+        "lat": 1.3521,
+        "lng": 103.8198
+      },
+      {
+        "id": "latam-sao-paulo-br",
+        "region": "LATAM",
+        "name": "BR_SAO_PAULO",
+        "city": "Sao Paulo",
+        "country": "BR",
+        "lat": -23.5505,
+        "lng": -46.6333
+      }
+    ],
+    "applicationServerLocation": "amer-seattle-us",
+    "userLocation": "FR",
+    "electionTimeoutMs": 2000,
+    "writeConcern": "majority",
+    "readConcern": "local",
+    "readPreference": "primary",
+    "latencies": {
+      "intraRegionMs": {
+        "amer-net": 25,
+        "emea-net": 25,
+        "apac-net": 25,
+        "latam-net": 25
+      },
+      "interRegionMs": {
+        "amer-emea-net": 120,
+        "amer-apac-net": 220,
+        "amer-latam-net": 80,
+        "latam-emea-net": 160,
+        "latam-apac-net": 260,
+        "emea-apac-net": 200
+      }
+    },
+    "sharded": true,
+    "shards": [
+      {
+        "name": "AM-EU-SH",
+        "nodes": [
+          {
+            "name": "SEA_1",
+            "type": "voting",
+            "priority": 2,
+            "dataCenter": "amer-seattle-us"
+          },
+          {
+            "name": "FRK_1",
+            "type": "voting",
+            "priority": 1,
+            "dataCenter": "emea-frankfurt-de"
+          },
+          {
+            "name": "FRK_2",
+            "type": "voting",
+            "priority": 1,
+            "dataCenter": "emea-frankfurt-de"
+          }
+        ]
+      },
+      {
+        "name": "APC-LAT-SH",
+        "nodes": [
+          {
+            "name": "SGP_1",
+            "type": "voting",
+            "priority": 1,
+            "dataCenter": "apac-singapore-sg"
+          },
+          {
+            "name": "SGP_2",
+            "type": "voting",
+            "priority": 1,
+            "dataCenter": "apac-singapore-sg"
+          },
+          {
+            "name": "SGP_3",
+            "type": "voting",
+            "priority": 1,
+            "dataCenter": "apac-singapore-sg"
+          }
+        ]
+      }
+    ],
+    "zones": [
+      {
+        "name": "zoneuseu",
+        "countries": [
+          "US",
+          "DE",
+          "FR"
+        ],
+        "shards": [
+          "AM-EU-SH"
+        ]
+      },
+      {
+        "name": "zoneasialatam",
+        "countries": [
+          "SG",
+          "BR",
+          "NZ"
+        ],
+        "shards": [
+          "APC-LAT-SH"
+        ]
+      }
+    ]
+  }
+  

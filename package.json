@@ -1,0 +1,25 @@
+{
+  "name": "failover-monitor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MongoDB replica set health monitor",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test:reset": "bash tests/test-reset-endpoint.sh",
+    "test:data-centers": "bash tests/test-data-centers-normalization.sh",
+    "test:api-sse-baseline": "bash tests/test-api-sse-regression.sh",
+    "test:deployment-profile": "bash tests/test-deployment-profile-settings.sh",
+    "test:consolidated-sharding": "bash tests/test-consolidated-sharding-lifecycle.sh",
+    "test:template-failure-parity": "bash tests/test-template-apply-failure-parity.sh",
+    "test:templates": "bash tests/test-template-configs.sh",
+    "test:parity-offline": "npm run test:api-sse-baseline && npm run test:deployment-profile && npm run test:consolidated-sharding && npm run test:template-failure-parity && npm run test:templates",
+    "test:smoke": "npm run test:reset && npm run test:data-centers && npm run test:api-sse-baseline && npm run test:deployment-profile && npm run test:consolidated-sharding && npm run test:template-failure-parity && npm run test:templates"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "i18n-iso-countries": "^7.14.0",
+    "leaflet": "^1.9.4"
+  }
+}

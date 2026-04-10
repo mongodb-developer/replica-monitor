@@ -1,0 +1,260 @@
+{
+    "operationId": "applyTemplateAndRebuild:Sharded Cluster Save Test Extended",
+    "totalMs": 263396.09158400004,
+    "spans": [
+        {
+            "name": "validateTemplate",
+            "ms": 0.07387499999822467
+        },
+        {
+            "name": "loadSettingsAndPrepareNext",
+            "ms": 0.6944169999987935
+        },
+        {
+            "name": "writeNetemLatencyFileFromTemplate",
+            "ms": 0.7598749999997381
+        },
+        {
+            "name": "setApplicationServerSettings",
+            "ms": 0.925083000001905
+        },
+        {
+            "name": "setZones",
+            "ms": 0.4263329999994312
+        },
+        {
+            "name": "applyTemplate",
+            "ms": 3.017374999999447
+        },
+        {
+            "name": "stopApplicationServerWorkload",
+            "ms": 77.68820799999958
+        },
+        {
+            "name": "stopStack",
+            "ms": 162.614666999998
+        },
+        {
+            "name": "resetRuntimeState",
+            "ms": 0.13699999999880674
+        },
+        {
+            "name": "startStack",
+            "ms": 82404.18933400001
+        },
+        {
+            "name": "rebuildSharded_firstShard_writeAndMongoshInit",
+            "ms": 11355.078834
+        },
+        {
+            "name": "rebuildSharded_cleanupRuntimeReplicaContainers",
+            "ms": 0.17079200000443961
+        },
+        {
+            "name": "rebuildSharded_getApplicationServerSettings",
+            "ms": 0.734083000003011
+        },
+        {
+            "name": "rebuildSharded_ensureConfiguredComposeNodesInReplicaSet",
+            "ms": 753.0273749999906
+        },
+        {
+            "name": "applyPostInit_reconcileReplicaNodeNetworks",
+            "ms": 3899.954874999996
+        },
+        {
+            "name": "applyPostInit_syncDataCenterHostsEntries",
+            "ms": 1536.5150830000057
+        },
+        {
+            "name": "applyPostInit_syncLegacyAppMongoUri",
+            "ms": 20.837332999988575
+        },
+        {
+            "name": "applyPostInit_runNetemLatencyScript",
+            "ms": 3305.3142500000104
+        },
+        {
+            "name": "rebuildSharded_applyPostInitBootstrap",
+            "ms": 8762.68579199999
+        },
+        {
+            "name": "reconcileUnsharded_resolvePrimary",
+            "ms": 349.9852499999979
+        },
+        {
+            "name": "reconcileUnsharded_mongosh_reconfig",
+            "ms": 278.16233400000783
+        },
+        {
+            "name": "rebuildSharded_reconcileFirstShardReplicaSet",
+            "ms": 628.3793330000044
+        },
+        {
+            "name": "rebuildSharded_shardReplicaSet",
+            "ms": 152110.493125
+        },
+        {
+            "name": "rebuildSharded_applyPersistedReplicaSetElectionTimeout",
+            "ms": 1613.6436669999966
+        },
+        {
+            "name": "rebuildSharded_getZones_syncZonesToSharding",
+            "ms": 2096.3249169999617
+        },
+        {
+            "name": "rebuildSharded",
+            "ms": 177320.96354199998
+        },
+        {
+            "name": "runNetemLatencyScript_final",
+            "ms": 3427.3017910000053
+        }
+    ],
+    "compose": {
+        "compose ps -a --services": {
+            "count": 281,
+            "totalMs": 25649.245164999807
+        },
+        "compose down --remove-orphans": {
+            "count": 1,
+            "totalMs": 51.879916000001685
+        },
+        "compose exec -T Default_1 mongosh --quiet --file": {
+            "count": 151,
+            "totalMs": 62815.95646199985
+        },
+        "compose exec -T Default_2 mongosh --quiet --file": {
+            "count": 54,
+            "totalMs": 13091.693040999915
+        },
+        "compose exec -T Default_3 mongosh --quiet --file": {
+            "count": 47,
+            "totalMs": 10237.546172999937
+        },
+        "compose exec -T SEA2_RO mongosh --quiet --file": {
+            "count": 47,
+            "totalMs": 10857.57137200001
+        },
+        "compose exec -T SIN2 mongosh --quiet --file": {
+            "count": 46,
+            "totalMs": 10458.784083000024
+        },
+        "compose ps --status running --services": {
+            "count": 162,
+            "totalMs": 14279.86508699994
+        },
+        "compose -p failovermonitor exec -T ApplicationServer-amer-seattle-us mongosh": {
+            "count": 245,
+            "totalMs": 52289.96516700006
+        },
+        "compose exec -T SEA2_RO bash -lc pidof mongod": {
+            "count": 141,
+            "totalMs": 13529.406203000148
+        },
+        "compose exec -T Default_3 bash -lc pidof mongod": {
+            "count": 141,
+            "totalMs": 13654.07921400018
+        },
+        "compose exec -T SIN2 bash -lc pidof mongod": {
+            "count": 141,
+            "totalMs": 13417.519920000097
+        },
+        "compose exec -T Default_2 bash -lc pidof mongod": {
+            "count": 141,
+            "totalMs": 13828.38065899993
+        },
+        "compose exec -T Default_1 bash -lc pidof mongod": {
+            "count": 141,
+            "totalMs": 13981.14129100001
+        },
+        "compose up -d": {
+            "count": 1,
+            "totalMs": 63032.40875
+        },
+        "compose exec -T Default_1 bash -lc tmp=$(mktemp) &&\nawk '\n  BEGIN { skip=0 }\n  $0==\"# BEGIN FAILOVER-MONITOR-DC-HOSTS\" { skip=1; next }\n  $0==\"# END FAILOVER-MONITOR-DC-HOSTS\" { skip=0; next }\n  skip==0 { print }\n' /etc/hosts > \"$tmp\" &&\npr": {
+            "count": 1,
+            "totalMs": 101.11966699999175
+        },
+        "compose exec -T Default_2 bash -lc tmp=$(mktemp) &&\nawk '\n  BEGIN { skip=0 }\n  $0==\"# BEGIN FAILOVER-MONITOR-DC-HOSTS\" { skip=1; next }\n  $0==\"# END FAILOVER-MONITOR-DC-HOSTS\" { skip=0; next }\n  skip==0 { print }\n' /etc/hosts > \"$tmp\" &&\npr": {
+            "count": 1,
+            "totalMs": 75.8547499999986
+        },
+        "compose exec -T Default_3 bash -lc tmp=$(mktemp) &&\nawk '\n  BEGIN { skip=0 }\n  $0==\"# BEGIN FAILOVER-MONITOR-DC-HOSTS\" { skip=1; next }\n  $0==\"# END FAILOVER-MONITOR-DC-HOSTS\" { skip=0; next }\n  skip==0 { print }\n' /etc/hosts > \"$tmp\" &&\npr": {
+            "count": 1,
+            "totalMs": 97.84770899999421
+        },
+        "compose exec -T SEA2_RO bash -lc tmp=$(mktemp) &&\nawk '\n  BEGIN { skip=0 }\n  $0==\"# BEGIN FAILOVER-MONITOR-DC-HOSTS\" { skip=1; next }\n  $0==\"# END FAILOVER-MONITOR-DC-HOSTS\" { skip=0; next }\n  skip==0 { print }\n' /etc/hosts > \"$tmp\" &&\nprin": {
+            "count": 1,
+            "totalMs": 76.8056249999936
+        },
+        "compose exec -T SIN2 bash -lc tmp=$(mktemp) &&\nawk '\n  BEGIN { skip=0 }\n  $0==\"# BEGIN FAILOVER-MONITOR-DC-HOSTS\" { skip=1; next }\n  $0==\"# END FAILOVER-MONITOR-DC-HOSTS\" { skip=0; next }\n  skip==0 { print }\n' /etc/hosts > \"$tmp\" &&\nprintf ": {
+            "count": 1,
+            "totalMs": 108.66941699999734
+        },
+        "compose exec -T ApplicationServer-amer-seattle-us bash -lc tmp=$(mktemp) &&\nawk '\n  BEGIN { skip=0 }\n  $0==\"# BEGIN FAILOVER-MONITOR-DC-HOSTS\" { skip=1; next }\n  $0==\"# END FAILOVER-MONITOR-DC-HOSTS\" { skip=0; next }\n  skip==0 { print }\n' /": {
+            "count": 1,
+            "totalMs": 107.05883300000278
+        },
+        "compose exec -T ApplicationServer-emea-frankfurt-de bash -lc tmp=$(mktemp) &&\nawk '\n  BEGIN { skip=0 }\n  $0==\"# BEGIN FAILOVER-MONITOR-DC-HOSTS\" { skip=1; next }\n  $0==\"# END FAILOVER-MONITOR-DC-HOSTS\" { skip=0; next }\n  skip==0 { print }\n'": {
+            "count": 1,
+            "totalMs": 114.31616700001177
+        },
+        "compose exec -T ApplicationServer-apac-singapore-sg bash -lc tmp=$(mktemp) &&\nawk '\n  BEGIN { skip=0 }\n  $0==\"# BEGIN FAILOVER-MONITOR-DC-HOSTS\" { skip=1; next }\n  $0==\"# END FAILOVER-MONITOR-DC-HOSTS\" { skip=0; next }\n  skip==0 { print }\n'": {
+            "count": 1,
+            "totalMs": 101.1085000000021
+        },
+        "compose exec -T ApplicationServer-latam-sao-paulo-br bash -lc tmp=$(mktemp) &&\nawk '\n  BEGIN { skip=0 }\n  $0==\"# BEGIN FAILOVER-MONITOR-DC-HOSTS\" { skip=1; next }\n  $0==\"# END FAILOVER-MONITOR-DC-HOSTS\" { skip=0; next }\n  skip==0 { print }\n": {
+            "count": 1,
+            "totalMs": 88.72608300000138
+        },
+        "compose config --services": {
+            "count": 1,
+            "totalMs": 80.12850000000617
+        },
+        "compose exec -T Default_1 mongosh --quiet --eval": {
+            "count": 8,
+            "totalMs": 2123.7252070000395
+        },
+        "compose -p failovermonitor exec -T ApplicationServer-amer-seattle-us bash": {
+            "count": 8,
+            "totalMs": 2141.0178339999256
+        },
+        "compose -p failovermonitor exec -T ApplicationServer-emea-frankfurt-de bash": {
+            "count": 4,
+            "totalMs": 17569.796083999943
+        },
+        "compose -p failovermonitor exec -T ApplicationServer-apac-singapore-sg bash": {
+            "count": 4,
+            "totalMs": 17556.50491800002
+        },
+        "compose -p failovermonitor exec -T ApplicationServer-latam-sao-paulo-br bash": {
+            "count": 4,
+            "totalMs": 17488.311874999985
+        },
+        "compose -p failovermonitor exec -T Default_1 bash": {
+            "count": 2,
+            "totalMs": 15873.989292000013
+        },
+        "compose -p failovermonitor exec -T Default_2 bash": {
+            "count": 2,
+            "totalMs": 15936.715957999986
+        },
+        "compose -p failovermonitor exec -T Default_3 bash": {
+            "count": 2,
+            "totalMs": 15920.878750000003
+        },
+        "compose -p failovermonitor exec -T SEA2_RO bash": {
+            "count": 2,
+            "totalMs": 15867.558875000017
+        },
+        "compose -p failovermonitor exec -T SIN2 bash": {
+            "count": 2,
+            "totalMs": 15711.607666000025
+        },
+        "compose exec -T ApplicationServer-amer-seattle-us mongosh --quiet --eval": {
+            "count": 1,
+            "totalMs": 379.56012499995995
+        }
+    }
+}
