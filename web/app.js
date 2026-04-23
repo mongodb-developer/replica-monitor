@@ -147,6 +147,7 @@ const applicationServerState = {
 };
 const APPLICATION_SERVER_MAX_LINES = 120;
 const APPLICATION_SERVER_CHART_WINDOW_SECONDS = 30;
+const STREAM_DISCONNECT_GRACE_MS = 10000;
 const HELP_TOPICS = [
   {
     id: "replica-topology-context-menus",
@@ -5980,14 +5981,24 @@ if (deploymentProgressModalCloseBtn) {
 function startStream() {
   const source = new EventSource("/api/stream");
   let hasConnected = false;
+  let disconnectGraceTimer = null;
+
+  const cancelDisconnectGrace = () => {
+    if (disconnectGraceTimer) {
+      clearTimeout(disconnectGraceTimer);
+      disconnectGraceTimer = null;
+    }
+  };
 
   setConnectionState("reconnecting");
 
   source.onopen = () => {
+    cancelDisconnectGrace();
     setConnectionState("live");
   };
 
   source.addEventListener("status", (event) => {
+    cancelDisconnectGrace();
     refreshDataCenterConfigIfNeeded();
     hasConnected = true;
     setConnectionState("live");
@@ -6029,18 +6040,52 @@ function startStream() {
   });
 
   source.onerror = () => {
-    if (hasConnected) {
-      clearDisplay();
+    if (!hasConnected) {
+      setConnectionState("disconnected");
+      setStatus("Stream disconnected. Browser will retry.");
+      return;
     }
-    setConnectionState("disconnected");
-    setStatus("Stream disconnected. Browser will retry.");
+    setConnectionState("reconnecting");
+    setStatus("Stream interrupted. Reconnecting...");
+    if (disconnectGraceTimer) {
+      return;
+    }
+    disconnectGraceTimer = setTimeout(() => {
+      disconnectGraceTimer = null;
+      clearDisplay();
+      setConnectionState("disconnected");
+      setStatus("Stream disconnected. Browser will retry.");
+    }, STREAM_DISCONNECT_GRACE_MS);
   };
 }
 
 function startApplicationServerStream() {
   const source = new EventSource("/api/application-server/stream");
+  let appServerDisconnectGraceTimer = null;
+
+  const cancelAppServerDisconnectGrace = () => {
+    if (appServerDisconnectGraceTimer) {
+      clearTimeout(appServerDisconnectGraceTimer);
+      appServerDisconnectGraceTimer = null;
+    }
+  };
+
+  const scheduleAppServerDisconnectLog = () => {
+    if (appServerDisconnectGraceTimer) {
+      return;
+    }
+    appServerDisconnectGraceTimer = setTimeout(() => {
+      appServerDisconnectGraceTimer = null;
+      pushApplicationServerLog({
+        line: "ApplicationServer stream disconnected. Waiting for reconnect...",
+        receivedAt: new Date().toISOString(),
+        source: "stderr"
+      });
+    }, STREAM_DISCONNECT_GRACE_MS);
+  };
 
   source.addEventListener("snapshot", (event) => {
+    cancelAppServerDisconnectGrace();
     const payload = JSON.parse(event.data);
     setApplicationServerRunning(payload.running);
     applicationServerState.logs = Array.isArray(payload.logs)
@@ -6053,6 +6098,7 @@ function startApplicationServerStream() {
   });
 
   source.addEventListener("log", (event) => {
+    cancelAppServerDisconnectGrace();
     const payload = JSON.parse(event.data);
     setApplicationServerRunning(payload.running);
     pushApplicationServerLog(payload.entry);
@@ -6060,6 +6106,7 @@ function startApplicationServerStream() {
   });
 
   source.addEventListener("state", (event) => {
+    cancelAppServerDisconnectGrace();
     const payload = JSON.parse(event.data);
     setApplicationServerRunning(payload.running);
     if (!payload.running) {
@@ -6073,11 +6120,7 @@ function startApplicationServerStream() {
   });
 
   source.onerror = () => {
-    pushApplicationServerLog({
-      line: "ApplicationServer stream disconnected. Waiting for reconnect...",
-      receivedAt: new Date().toISOString(),
-      source: "stderr"
-    });
+    scheduleAppServerDisconnectLog();
   };
 }
 
