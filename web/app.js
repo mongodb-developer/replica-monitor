@@ -148,6 +148,9 @@ const applicationServerState = {
 const APPLICATION_SERVER_MAX_LINES = 120;
 const APPLICATION_SERVER_CHART_WINDOW_SECONDS = 30;
 const STREAM_DISCONNECT_GRACE_MS = 10000;
+let mainStreamConnectionState = "reconnecting";
+let mainStreamElapsedFreezeWrite = null;
+let mainStreamElapsedFreezeRead = null;
 const HELP_TOPICS = [
   {
     id: "replica-topology-context-menus",
@@ -687,13 +690,16 @@ function setConnectionState(state) {
   connectionBadge.classList.add(state);
   if (state === "live") {
     connectionBadge.textContent = "Live";
-    return;
-  }
-  if (state === "disconnected") {
+  } else if (state === "disconnected") {
     connectionBadge.textContent = "Disconnected";
-    return;
+  } else {
+    connectionBadge.textContent = "Reconnecting";
   }
-  connectionBadge.textContent = "Reconnecting";
+  if (state === "live" || state === "disconnected") {
+    mainStreamElapsedFreezeWrite = null;
+    mainStreamElapsedFreezeRead = null;
+  }
+  mainStreamConnectionState = state;
 }
 
 function clearDisplay() {
@@ -2929,11 +2935,19 @@ function renderApplicationServerMetrics() {
   const readElapsed = applicationServerState.running
     ? elapsedSecondsFromIso(applicationServerState.lastCurrentValueAt)
     : null;
-  if (writeElapsed !== null) {
-    pushMetricSeriesPoint(applicationServerState.writeElapsedSeries, writeElapsed);
+  const chartWriteElapsed =
+    mainStreamConnectionState === "reconnecting" && mainStreamElapsedFreezeWrite !== null
+      ? mainStreamElapsedFreezeWrite
+      : writeElapsed;
+  const chartReadElapsed =
+    mainStreamConnectionState === "reconnecting" && mainStreamElapsedFreezeRead !== null
+      ? mainStreamElapsedFreezeRead
+      : readElapsed;
+  if (chartWriteElapsed !== null) {
+    pushMetricSeriesPoint(applicationServerState.writeElapsedSeries, chartWriteElapsed);
   }
-  if (readElapsed !== null) {
-    pushMetricSeriesPoint(applicationServerState.readElapsedSeries, readElapsed);
+  if (chartReadElapsed !== null) {
+    pushMetricSeriesPoint(applicationServerState.readElapsedSeries, chartReadElapsed);
   }
   trimMetricSeriesWindow(applicationServerState.writeElapsedSeries);
   trimMetricSeriesWindow(applicationServerState.readElapsedSeries);
@@ -6044,6 +6058,14 @@ function startStream() {
       setConnectionState("disconnected");
       setStatus("Stream disconnected. Browser will retry.");
       return;
+    }
+    if (mainStreamConnectionState === "live") {
+      mainStreamElapsedFreezeWrite = applicationServerState.running
+        ? elapsedSecondsFromIso(applicationServerState.lastIncrementedAt)
+        : null;
+      mainStreamElapsedFreezeRead = applicationServerState.running
+        ? elapsedSecondsFromIso(applicationServerState.lastCurrentValueAt)
+        : null;
     }
     setConnectionState("reconnecting");
     setStatus("Stream interrupted. Reconnecting...");
