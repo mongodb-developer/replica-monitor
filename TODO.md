@@ -41,4 +41,4 @@
 41. ~~RS to sharded process is currently failing.~~
 42. Deploy to Instruqt
 43. Be aware, in Sharded deployments, direct connections to replica sets seem to fail if the replic set is not 100% healthy 
-44. Generate new architect day certificates.
+44. ~~Generate new architect day certificates.~~

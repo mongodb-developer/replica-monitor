@@ -2766,10 +2766,11 @@ function elapsedSecondsFromIso(isoString) {
   if (!isoString) {
     return null;
   }
-  const elapsedMs = Date.now() - new Date(isoString).getTime();
-  if (Number.isNaN(elapsedMs) || elapsedMs < 0) {
+  const parsedMs = new Date(isoString).getTime();
+  if (!Number.isFinite(parsedMs)) {
     return null;
   }
+  const elapsedMs = Math.max(0, Date.now() - parsedMs);
   return Math.max(1, Math.round(elapsedMs / 1000));
 }
 
@@ -2903,8 +2904,7 @@ function drawElapsedChart(canvas, series, color, yOptions = {}) {
   ctx.beginPath();
   let started = false;
   for (const point of series) {
-    if (point.value === null) {
-      started = false;
+    if (point.value === null || !Number.isFinite(point.value)) {
       continue;
     }
     const x =
@@ -2928,8 +2928,14 @@ function renderApplicationServerMetrics() {
   const readElapsed = applicationServerState.running
     ? elapsedSecondsFromIso(applicationServerState.lastCurrentValueAt)
     : null;
-  pushMetricSeriesPoint(applicationServerState.writeElapsedSeries, writeElapsed);
-  pushMetricSeriesPoint(applicationServerState.readElapsedSeries, readElapsed);
+  if (writeElapsed !== null) {
+    pushMetricSeriesPoint(applicationServerState.writeElapsedSeries, writeElapsed);
+  }
+  if (readElapsed !== null) {
+    pushMetricSeriesPoint(applicationServerState.readElapsedSeries, readElapsed);
+  }
+  trimMetricSeriesWindow(applicationServerState.writeElapsedSeries);
+  trimMetricSeriesWindow(applicationServerState.readElapsedSeries);
   trimMetricSeriesWindow(applicationServerState.writeLatencySeries);
   trimMetricSeriesWindow(applicationServerState.readLatencySeries);
   drawElapsedChart(sinceWriteChart, applicationServerState.writeElapsedSeries, "#f59e0b", {
@@ -3007,8 +3013,9 @@ function setApplicationServerMetrics(metrics) {
     applicationServerState.lastCurrentValueAt = preferredRead.at || null;
     applicationServerState.lastCurrentValue = preferredRead.value;
   } else {
-    applicationServerState.lastCurrentValueAt = null;
-    applicationServerState.lastCurrentValue = null;
+    applicationServerState.lastCurrentValueAt = metrics?.lastCurrentValueAt || null;
+    applicationServerState.lastCurrentValue =
+      typeof metrics?.lastCurrentValue === "number" ? metrics.lastCurrentValue : null;
   }
   renderApplicationServerMetrics();
   renderShardDataTable();
