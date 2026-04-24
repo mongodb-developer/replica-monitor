@@ -4759,35 +4759,59 @@ function closeDeploymentProgressStream() {
   }
 }
 
+function createDeploymentProgressRow(id, label) {
+  const row = document.createElement("li");
+  row.className = "deployment-progress-step pending";
+  row.dataset.stepId = id;
+  const icon = document.createElement("span");
+  icon.className = "deployment-progress-step-icon";
+  icon.setAttribute("aria-hidden", "true");
+  icon.innerHTML = '<span class="deployment-progress-pending-dot" aria-hidden="true"></span>';
+  const labelEl = document.createElement("span");
+  labelEl.className = "deployment-progress-step-label";
+  labelEl.textContent = label;
+  const detailEl = document.createElement("p");
+  detailEl.className = "deployment-progress-step-detail hidden";
+  row.appendChild(icon);
+  row.appendChild(labelEl);
+  row.appendChild(detailEl);
+  row._iconEl = icon;
+  row._labelEl = labelEl;
+  row._detailEl = detailEl;
+  return row;
+}
+
 function deploymentProgressRenderPlan(steps) {
   if (!Array.isArray(steps) || !steps.length) {
     return;
   }
+  // The server replays the `plan` event every time an SSE subscriber (re)connects
+  // (see server/lib/deploymentProgressHub.js `subscribe`). EventSource reconnects
+  // transparently on transient drops, so the UI can receive multiple `plan` events
+  // during a single deployment. We must NOT wipe existing rows on subsequent plan
+  // events -- doing so resets already-completed steps back to "pending" mid-flight.
+  if (deploymentProgressRows.size > 0) {
+    for (const step of steps) {
+      const id = String(step.id || "");
+      if (!id || deploymentProgressRows.has(id)) {
+        continue;
+      }
+      const label = String(step.label || id);
+      const row = createDeploymentProgressRow(id, label);
+      deploymentProgressStepsList.appendChild(row);
+      deploymentProgressRows.set(id, row);
+    }
+    return;
+  }
+
   deploymentProgressStepsList.innerHTML = "";
   deploymentProgressRows.clear();
   for (const step of steps) {
     const id = String(step.id || "");
     const label = String(step.label || id);
-    const row = document.createElement("li");
-    row.className = "deployment-progress-step pending";
-    row.dataset.stepId = id;
-    const icon = document.createElement("span");
-    icon.className = "deployment-progress-step-icon";
-    icon.setAttribute("aria-hidden", "true");
-    const labelEl = document.createElement("span");
-    labelEl.className = "deployment-progress-step-label";
-    const detailEl = document.createElement("p");
-    detailEl.className = "deployment-progress-step-detail hidden";
-    icon.innerHTML = '<span class="deployment-progress-pending-dot" aria-hidden="true"></span>';
-    labelEl.textContent = label;
-    row.appendChild(icon);
-    row.appendChild(labelEl);
-    row.appendChild(detailEl);
+    const row = createDeploymentProgressRow(id, label);
     deploymentProgressStepsList.appendChild(row);
     deploymentProgressRows.set(id, row);
-    row._iconEl = icon;
-    row._labelEl = labelEl;
-    row._detailEl = detailEl;
   }
 }
 
