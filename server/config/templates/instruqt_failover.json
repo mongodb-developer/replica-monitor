@@ -44,7 +44,7 @@
     "electionTimeoutMs": 5000,
     "writeConcern": "majority",
     "readConcern": "local",
-    "readPreference": "majority",
+    "readPreference": "primary",
     "latencies": {
       "intraRegionMs": {
         "amer-net": 25,
