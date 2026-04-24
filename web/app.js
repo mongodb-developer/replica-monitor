@@ -343,6 +343,8 @@ const OPERATION_LOCK_REASON = {
   CONSOLE_SETTINGS: "console-settings",
   TEMPLATE_APPLY: "template-apply"
 };
+/** `POST /api/configurations/apply` can run longer than default proxy/idle windows; keep in sync with server `LONG_HTTP_TIMEOUT_MS`. */
+const CONFIGURATION_APPLY_FETCH_TIMEOUT_MS = 2 * 60 * 60 * 1000;
 const OPERATION_LOCKED_STATUS = "Another operation is still in progress. Please wait.";
 const operationLockState = {
   active: false,
@@ -4924,7 +4926,7 @@ async function applyConfigurationTemplateFlow() {
 
   const lockToken = beginOperationLock(OPERATION_LOCK_REASON.TEMPLATE_APPLY);
   const applyAbort = new AbortController();
-  const applyTimeoutId = window.setTimeout(() => applyAbort.abort(), 30 * 60 * 1000);
+  const applyTimeoutId = window.setTimeout(() => applyAbort.abort(), CONFIGURATION_APPLY_FETCH_TIMEOUT_MS);
   const progressToken = generateDeploymentProgressToken();
   openDeploymentProgressModal("Applying configuration", `Template: ${selected.name}`);
   bindDeploymentProgressStream(progressToken);

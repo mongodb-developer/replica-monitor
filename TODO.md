@@ -42,5 +42,5 @@
 42. Deploy to Instruqt
 43. Be aware, in Sharded deployments, direct connections to replica sets seem to fail if the replic set is not 100% healthy 
 44. ~~Generate new architect day certificates.~~
-45. Check how docker is installed on Instruqt VMs - switch from snap to offical apt repo tp avoid apparmor derived permission errors when trying to manually stop containers (https://medium.com/@stephenoroy/troubleshooting-docker-resolving-permission-issues-and-stopping-containers-21a4fff27cfc)
+45. ~~Check how docker is installed on Instruqt VMs - switch from snap to offical apt repo tp avoid apparmor derived permission errors when trying to manually stop containers (https://medium.com/@stephenoroy/troubleshooting-docker-resolving-permission-issues-and-stopping-containers-21a4fff27cfc)~~
 46. Remove options to change priority of read-only nodes.

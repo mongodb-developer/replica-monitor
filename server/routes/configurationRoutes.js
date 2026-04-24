@@ -70,7 +70,9 @@ function registerConfigurationRoutes(app, deps) {
 
   app.post("/api/configurations/apply", requireUiControl, async (req, res) => {
     const { configurationId, configuration, progressToken } = req.body || {};
-    req.socket.setTimeout(30 * 60 * 1000);
+    // No per-socket inactivity cap while the handler runs; long compose/bootstrap work can be silent on the wire.
+    // If a reverse proxy returns "upstream request timeout", raise its read/route timeout to match (see LONG_HTTP_TIMEOUT_MS on the server).
+    req.socket.setTimeout(0);
     try {
       let selectedConfiguration = configuration;
       if (configurationId) {
