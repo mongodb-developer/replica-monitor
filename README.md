@@ -348,7 +348,8 @@ Open the URL printed at startup (for example [https://localhost:3000](https://lo
 - `GET /api/status` (includes `uiControl`: `controllerSessionId`, `passwordRequiredForClaim`, `adminClaimRequired` — the latter two are `false` when `server/data/adminPassword` is missing or empty)
 - `GET /api/stream` (replica status SSE; same `uiControl` object in each `status` event)
 - `GET /api/application-server/stream` (workload SSE)
-- `GET /api/deployment-progress/stream?token=...` (SSE for template apply steps when `progressToken` is sent with apply)
+- `GET /api/deployment-progress/stream?token=...` (SSE for long-running deployment steps; terminal `complete` event includes the same result payload the HTTP POST used to return)
+- `GET /api/deployment-progress/status?token=...` (JSON: `running` | `done` | `error` | `unknown` — optional poll if the SSE drops)
 
 ### Stack and Replica Set
 - `POST /api/stack/start`
@@ -356,7 +357,7 @@ Open the URL printed at startup (for example [https://localhost:3000](https://lo
 - `POST /api/replicaset/reset`
 - `POST /api/replicaset/nodes/add` (`role`: `voting` or `analytics`)
 - `POST /api/replicaset/nodes/remove`
-- `POST /api/replicaset/shard`
+- `POST /api/replicaset/shard` — body: `shardName`, **required** `progressToken`; returns **`202 Accepted`**; final result on deployment-progress SSE `complete` event
 
 ### MongoDB Process Controls
 - `POST /api/mongodb/stop-graceful`
@@ -399,7 +400,7 @@ Open the URL printed at startup (for example [https://localhost:3000](https://lo
 - `GET /api/configurations/save-context` — whether a template was applied this session and overwrite/save-as context.
 - `GET /api/configurations/:id` — load one template by filename (e.g. `gcr-replica.json` or `gcr-replica`).
 - `POST /api/configurations/validate` — body `{ "configuration": <template object> }`; returns `{ ok, errors[] }`.
-- `POST /api/configurations/apply` — body may include `configurationId`, inline `configuration`, and optional `progressToken` for `GET /api/deployment-progress/stream`.
+- `POST /api/configurations/apply` — body: `configurationId` and/or inline `configuration`, and **required** `progressToken` (open the deployment-progress SSE first). Returns **`202 Accepted`** immediately with `{ ok, accepted, progressToken }` after validation; the rebuild runs in the background. Final `{ ok, ...applyResult, lastAppliedTemplateId }` is delivered on the SSE `complete` event (`data.result`).
 - `POST /api/configurations/save` — body `mode`: `overwrite` | `saveAs`, optional `filename`, `name`, `description`; builds a template from current runtime settings (requires a prior successful apply).
 
 Template files live in `server/config/templates/`. Legacy `deploymentProfile` keys in JSON are **ignored**; deployment is **consolidated-only** (ApplicationServer hosts configsvr + mongos).

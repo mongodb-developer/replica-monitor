@@ -12,8 +12,8 @@ function createMockApp() {
     get(path, handler) {
       routes.GET.set(path, handler);
     },
-    post(path, handler) {
-      routes.POST.set(path, handler);
+    post(path, ...handlers) {
+      routes.POST.set(path, handlers[handlers.length - 1]);
     },
     route(method, path) {
       return routes[String(method || "").toUpperCase()].get(path);
@@ -67,7 +67,14 @@ function createMockRes() {
 
 async function testStatusRoutes() {
   const app = createMockApp();
-  const statusPayload = { members: [{ name: "Default_1:27017", stateStr: "PRIMARY" }] };
+  const statusPayload = {
+    members: [{ name: "Default_1:27017", stateStr: "PRIMARY" }],
+    uiControl: {
+      controllerSessionId: null,
+      passwordRequiredForClaim: false,
+      adminClaimRequired: false
+    }
+  };
   const subscriptions = [];
   registerStatusRoutes(app, {
     fetchReplicaStatus: async () => statusPayload,
@@ -138,6 +145,17 @@ async function testStatusRoutes() {
     assert.equal(subscriptions.length, 0, "Expected subscription cleanup on stream close.");
     assert.equal(res.ended, true, "Expected /api/application-server/stream to close cleanly.");
   }
+
+  const deploymentProgressStatusHandler = app.route("GET", "/api/deployment-progress/status");
+  assert.ok(deploymentProgressStatusHandler, "Expected /api/deployment-progress/status handler.");
+  {
+    const req = { query: { token: "sse-regression-unknown-token" } };
+    const res = createMockRes();
+    await deploymentProgressStatusHandler(req, res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.payload?.ok, true);
+    assert.equal(res.payload?.status, "unknown");
+  }
 }
 
 async function testClusterRoutes() {
@@ -194,8 +212,8 @@ async function testClusterRoutes() {
       preferredStatusService: "Default_1",
       serviceRuntime: "replica"
     }),
-    shardReplicaSet: async (name) => {
-      calls.push(["shardReplicaSet", name]);
+    shardReplicaSet: async (name, options) => {
+      calls.push(["shardReplicaSet", name, options]);
       return { shardName: name, alreadyExists: false };
     },
     stopContainer: async () => {},
@@ -250,12 +268,25 @@ async function testClusterRoutes() {
     assert.match(String(res.payload?.error || ""), /shardName is invalid/i);
   }
   {
+    const req = createMockReq({ shardName: "shard1", progressToken: "sse-shard-token" });
+    const res = createMockRes();
+    await shardHandler(req, res);
+    assert.equal(res.statusCode, 202);
+    assert.equal(res.payload?.ok, true);
+    assert.equal(res.payload?.accepted, true);
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(calls.find((entry) => entry[0] === "shardReplicaSet"), [
+      "shardReplicaSet",
+      "shard1",
+      { progressToken: "sse-shard-token", suppressProgressComplete: true }
+    ]);
+  }
+  {
     const req = createMockReq({ shardName: "shard1" });
     const res = createMockRes();
     await shardHandler(req, res);
-    assert.equal(res.statusCode, 200);
-    assert.equal(res.payload?.ok, true);
-    assert.deepEqual(calls.find((entry) => entry[0] === "shardReplicaSet"), ["shardReplicaSet", "shard1"]);
+    assert.equal(res.statusCode, 400);
+    assert.match(String(res.payload?.error || ""), /progressToken is required/i);
   }
 }
 

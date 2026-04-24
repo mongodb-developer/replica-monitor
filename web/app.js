@@ -343,8 +343,6 @@ const OPERATION_LOCK_REASON = {
   CONSOLE_SETTINGS: "console-settings",
   TEMPLATE_APPLY: "template-apply"
 };
-/** `POST /api/configurations/apply` can run longer than default proxy/idle windows; keep in sync with server `LONG_HTTP_TIMEOUT_MS`. */
-const CONFIGURATION_APPLY_FETCH_TIMEOUT_MS = 2 * 60 * 60 * 1000;
 const OPERATION_LOCKED_STATUS = "Another operation is still in progress. Please wait.";
 const operationLockState = {
   active: false,
@@ -4820,39 +4818,139 @@ function waitForDeploymentProgressStreamReady(source, timeoutMs = 15000) {
   });
 }
 
-function bindDeploymentProgressStream(progressToken) {
+async function pollDeploymentProgressUntilTerminal(progressToken, options = {}) {
+  const intervalMs = options.intervalMs ?? 2000;
+  const timeoutMs = options.timeoutMs ?? 30 * 60 * 1000;
+  const start = Date.now();
+  const q = encodeURIComponent(progressToken);
+  while (Date.now() - start < timeoutMs) {
+    const data = await requestJson(`/api/deployment-progress/status?token=${q}`);
+    if (data.status === "done") {
+      return data.result;
+    }
+    if (data.status === "error") {
+      const err = new Error(data.error || "Deployment failed.");
+      if (Array.isArray(data.validationErrors)) {
+        err.validationErrors = data.validationErrors;
+      }
+      throw err;
+    }
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+  throw new Error("Timed out waiting for deployment to finish.");
+}
+
+/**
+ * @returns {Promise<unknown>} Resolves with the `result` payload from the terminal `complete` SSE event.
+ */
+function bindDeploymentProgressStream(progressToken, options = {}) {
+  const timeoutMs = options.timeoutMs ?? 30 * 60 * 1000;
   closeDeploymentProgressStream();
   const source = new EventSource(
     `/api/deployment-progress/stream?token=${encodeURIComponent(progressToken)}`
   );
   deploymentProgressStream = source;
-  source.addEventListener("plan", (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      deploymentProgressRenderPlan(data.steps);
-    } catch (_err) {
-      // ignore malformed payloads
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const overallTimer = window.setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        closeDeploymentProgressStream();
+        reject(new Error("Deployment timed out waiting for completion."));
+      }
+    }, timeoutMs);
+
+    function cleanup() {
+      window.clearTimeout(overallTimer);
     }
-  });
-  source.addEventListener("step", (event) => {
-    try {
-      deploymentProgressHandleStep(JSON.parse(event.data));
-    } catch (_err) {
-      // ignore malformed payloads
-    }
-  });
-  source.addEventListener("complete", () => {
-    closeDeploymentProgressStream();
-  });
-  source.addEventListener("deploymentError", (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      deploymentProgressErrorLine.textContent = data.message || "Deployment failed.";
-      deploymentProgressErrorLine.classList.remove("hidden");
-    } catch (_err) {
-      deploymentProgressErrorLine.textContent = "Deployment failed.";
-      deploymentProgressErrorLine.classList.remove("hidden");
-    }
+
+    source.addEventListener("plan", (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        deploymentProgressRenderPlan(data.steps);
+      } catch (_err) {
+        // ignore malformed payloads
+      }
+    });
+    source.addEventListener("step", (event) => {
+      try {
+        deploymentProgressHandleStep(JSON.parse(event.data));
+      } catch (_err) {
+        // ignore malformed payloads
+      }
+    });
+    source.addEventListener("complete", (event) => {
+      if (settled) {
+        return;
+      }
+      try {
+        const data = JSON.parse(event.data);
+        settled = true;
+        cleanup();
+        closeDeploymentProgressStream();
+        resolve(data.result ?? null);
+      } catch (err) {
+        settled = true;
+        cleanup();
+        closeDeploymentProgressStream();
+        reject(err);
+      }
+    });
+    source.addEventListener("deploymentError", (event) => {
+      if (settled) {
+        return;
+      }
+      try {
+        const data = JSON.parse(event.data);
+        const message = data.message || "Deployment failed.";
+        deploymentProgressErrorLine.textContent = message;
+        deploymentProgressErrorLine.classList.remove("hidden");
+        const err = new Error(message);
+        if (Array.isArray(data.validationErrors)) {
+          err.validationErrors = data.validationErrors;
+        }
+        settled = true;
+        cleanup();
+        closeDeploymentProgressStream();
+        reject(err);
+      } catch (err) {
+        deploymentProgressErrorLine.textContent = "Deployment failed.";
+        deploymentProgressErrorLine.classList.remove("hidden");
+        settled = true;
+        cleanup();
+        closeDeploymentProgressStream();
+        reject(err);
+      }
+    });
+    source.addEventListener("error", () => {
+      if (settled || deploymentProgressStream !== source) {
+        return;
+      }
+      window.setTimeout(async () => {
+        if (settled || deploymentProgressStream !== source) {
+          return;
+        }
+        if (source.readyState === EventSource.CLOSED) {
+          try {
+            const result = await pollDeploymentProgressUntilTerminal(progressToken, { timeoutMs });
+            if (!settled) {
+              settled = true;
+              cleanup();
+              closeDeploymentProgressStream();
+              resolve(result);
+            }
+          } catch (err) {
+            if (!settled) {
+              settled = true;
+              cleanup();
+              closeDeploymentProgressStream();
+              reject(err);
+            }
+          }
+        }
+      }, 500);
+    });
   });
 }
 
@@ -4925,29 +5023,31 @@ async function applyConfigurationTemplateFlow() {
   }
 
   const lockToken = beginOperationLock(OPERATION_LOCK_REASON.TEMPLATE_APPLY);
-  const applyAbort = new AbortController();
-  const applyTimeoutId = window.setTimeout(() => applyAbort.abort(), CONFIGURATION_APPLY_FETCH_TIMEOUT_MS);
   const progressToken = generateDeploymentProgressToken();
   openDeploymentProgressModal("Applying configuration", `Template: ${selected.name}`);
-  bindDeploymentProgressStream(progressToken);
+  const progressPromise = bindDeploymentProgressStream(progressToken);
   try {
     await waitForDeploymentProgressStreamReady(deploymentProgressStream);
     setStatus(`Applying configuration "${selected.name}" (rebuilding cluster)...`);
-    await requestJson("/api/configurations/apply", {
+    const ack = await requestJson("/api/configurations/apply", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ configurationId: selected.id, progressToken }),
-      signal: applyAbort.signal
+      body: JSON.stringify({ configurationId: selected.id, progressToken })
     });
+    if (!ack?.accepted) {
+      throw new Error("Configuration apply was not accepted.");
+    }
+    await progressPromise;
     await refreshDataCenterConfigIfNeeded({ force: true });
     await refreshNow();
     setStatus(`Configuration "${selected.name}" applied and cluster rebuilt.`);
   } catch (error) {
+    closeDeploymentProgressStream();
+    void progressPromise.catch(() => {});
     deploymentProgressErrorLine.textContent = error.message || "Configuration apply failed.";
     deploymentProgressErrorLine.classList.remove("hidden");
     setStatus(`Failed to apply configuration: ${error.message}`);
   } finally {
-    window.clearTimeout(applyTimeoutId);
     closeDeploymentProgressStream();
     deploymentProgressModalCloseBtn.disabled = false;
     endOperationLock(lockToken);
@@ -5277,18 +5377,24 @@ canvasContextMenu.addEventListener("click", (event) => {
     void (async () => {
       const progressToken = generateDeploymentProgressToken();
       openDeploymentProgressModal("Sharding replica set", `Shard name: ${proposedShardName}`);
-      bindDeploymentProgressStream(progressToken);
+      const progressPromise = bindDeploymentProgressStream(progressToken);
       try {
         await waitForDeploymentProgressStreamReady(deploymentProgressStream);
         setStatus("Sharding replica set...");
-        const payload = await requestJson("/api/replicaset/shard", {
+        const ack = await requestJson("/api/replicaset/shard", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ shardName: proposedShardName, progressToken })
         });
-        setStatus(payload.message || "Replica set sharded.");
+        if (!ack?.accepted) {
+          throw new Error("Shard request was not accepted.");
+        }
+        const payload = await progressPromise;
+        setStatus(payload?.message || "Replica set sharded.");
         await refreshNow();
       } catch (error) {
+        closeDeploymentProgressStream();
+        void progressPromise.catch(() => {});
         deploymentProgressErrorLine.textContent = error.message || "Sharding failed.";
         deploymentProgressErrorLine.classList.remove("hidden");
         setStatus(`Failed to shard replica set: ${error.message}`);

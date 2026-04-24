@@ -131,6 +131,16 @@ function registerStatusRoutes(app, deps) {
       res.status(400).send("invalid token");
     }
   });
+
+  app.get("/api/deployment-progress/status", (req, res) => {
+    const token = String(req.query.token || "").trim();
+    if (!token) {
+      res.status(400).json({ ok: false, error: "token query parameter is required" });
+      return;
+    }
+    const snapshot = deploymentProgressHub.getDeploymentProgressStatus(token);
+    res.json({ ok: true, ...snapshot });
+  });
 }
 
 module.exports = {

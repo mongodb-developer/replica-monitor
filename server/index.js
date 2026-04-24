@@ -81,8 +81,6 @@ const { registerClusterRoutes } = require("./routes/clusterRoutes");
 
 const app = express();
 const port = process.env.PORT || 3000;
-/** `POST /api/configurations/apply` can run for a long time (compose / bootstrap). Override with LONG_HTTP_TIMEOUT_MS. */
-const LONG_HTTP_TIMEOUT_MS = Number(process.env.LONG_HTTP_TIMEOUT_MS || 2 * 60 * 60 * 1000);
 const SSL_KEY_PATH = path.join(__dirname, "../web/certificates/privkey.pem");
 const SSL_CERT_PATH = path.join(__dirname, "../web/certificates/fullchain.pem");
 const pollIntervalMs = Number(process.env.POLL_INTERVAL_MS || 2000);
@@ -209,9 +207,6 @@ async function startServer() {
     }
     server = http.createServer(app);
   }
-
-  server.requestTimeout = LONG_HTTP_TIMEOUT_MS;
-  server.headersTimeout = LONG_HTTP_TIMEOUT_MS;
 
   server.listen(port, () => {
     const scheme = useTls ? "https" : "http";

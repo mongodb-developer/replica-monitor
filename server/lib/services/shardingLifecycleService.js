@@ -80,7 +80,12 @@ function createShardingLifecycleService(deps) {
     const firstShardHosts = Array.isArray(options.firstShardHosts)
       ? options.firstShardHosts.map((h) => String(h || "").trim()).filter(Boolean)
       : [];
-    const { skipElectionTimeoutApply, suppressDeploymentProgress, progressToken } = options;
+    const {
+      skipElectionTimeoutApply,
+      suppressDeploymentProgress,
+      progressToken,
+      suppressProgressComplete = false
+    } = options;
 
     if (!normalizedShardName) {
       throw new Error("shard name is required.");
@@ -236,12 +241,7 @@ function createShardingLifecycleService(deps) {
         });
       });
 
-      if (progress) {
-        progress.markStepDone("deployment_completed", "Deployment Completed");
-        progress.complete();
-      }
-
-      return {
+      const shardResult = {
         alreadyExists: false,
         container: activeConfigServerContainerName,
         hostPort: null,
@@ -250,9 +250,19 @@ function createShardingLifecycleService(deps) {
         message: `Replica set sharded as ${normalizedShardName}. ApplicationServer configured as config/mongos host.`,
         deploymentProfile: "consolidated"
       };
+
+      if (progress) {
+        progress.markStepDone("deployment_completed", "Deployment Completed");
+        if (!suppressProgressComplete) {
+          progress.complete(shardResult);
+        }
+      }
+
+      return shardResult;
     } catch (error) {
       if (progress) {
-        progress.abort();
+        progress.fatal(error.message);
+        return null;
       }
       throw error;
     }

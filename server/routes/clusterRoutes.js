@@ -1,4 +1,5 @@
 const { clearConfigurationApplySucceeded } = require("../lib/configurationSessionState");
+const deploymentProgressHub = require("../lib/deploymentProgressHub");
 const { requireUiControl } = require("../lib/uiControlService");
 
 function registerClusterRoutes(app, deps) {
@@ -417,12 +418,34 @@ function registerClusterRoutes(app, deps) {
       });
       return;
     }
+    if (!progressToken) {
+      res.status(400).json({ ok: false, error: "progressToken is required" });
+      return;
+    }
     try {
-      const result = await shardReplicaSet(shardName, { progressToken });
-      res.json({
+      deploymentProgressHub.markDeploymentInFlight(progressToken);
+      res.status(202).json({
         ok: true,
-        ...result
+        accepted: true,
+        progressToken
       });
+      void (async () => {
+        try {
+          const result = await shardReplicaSet(shardName, {
+            progressToken,
+            suppressProgressComplete: true
+          });
+          if (result === null) {
+            return;
+          }
+          deploymentProgressHub.emitComplete(progressToken, {
+            ok: true,
+            ...result
+          });
+        } catch (error) {
+          deploymentProgressHub.emitFatal(progressToken, error.message);
+        }
+      })();
     } catch (error) {
       res.status(500).json({ ok: false, error: error.message });
     }

@@ -8,7 +8,7 @@ const { MongoClient, ReadPreference } = require("mongodb");
 // specified then the replica set will fill in the rest.
 //
 const uri =
-  "mongodb://GCR1:27017,GCR2:27017,GCR3:27017,GCR4:27017,GCR5:27017/?authSource=admin&replicaSet=graeme-test-repl-set";
+  "mongodb://Default_1:27017,Default_2:27017,Default_3:27017,SEA2_RO:27017,SIN2:27017/?authSource=admin&replicaSet=SH-1";
 // // DEMO 4
 // const uri = "mongodb://Default_1:27017,Default_2:27017,Default_3:27017/?authSource=admin&replicaSet=mongodb-repl-set&readPreference=primaryPreferred";
 //

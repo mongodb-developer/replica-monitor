@@ -12,8 +12,8 @@ function createMockApp() {
     get(path, handler) {
       routes.GET.set(path, handler);
     },
-    post(path, handler) {
-      routes.POST.set(path, handler);
+    post(path, ...handlers) {
+      routes.POST.set(path, handlers[handlers.length - 1]);
     },
     route(method, path) {
       return routes[String(method || "").toUpperCase()].get(path);
@@ -76,14 +76,14 @@ function createMockRes() {
     getTemplateById: async () => {
       throw new Error("not used");
     },
-    validateTemplatePayload: async () => ({ ok: true, errors: [] }),
+    validateTemplatePayload: async (configuration) => {
+      if (configuration?.name === "invalid-template") {
+        return { ok: false, errors: ["dataCenters must contain exactly 4 entries"] };
+      }
+      return { ok: true, errors: [] };
+    },
     applyTemplateAndRebuild: async (configuration) => {
       calls.push(["applyTemplateAndRebuild", configuration?.name || "inline"]);
-      if (configuration?.name === "invalid-template") {
-        const err = new Error("Template validation failed");
-        err.validationErrors = ["dataCenters must contain exactly 4 entries"];
-        throw err;
-      }
       runtimeSettings = { ...appliedSettings };
       return {
         settings: { ...appliedSettings },
@@ -186,12 +186,15 @@ function createMockRes() {
 
   {
     const req = createMockReq({
-      configuration: { name: "global-replicaset", sharded: false }
+      configuration: { name: "global-replicaset", sharded: false },
+      progressToken: "parity-test-token"
     });
     const res = createMockRes();
     await applyHandler(req, res);
-    assert.equal(res.statusCode, 200);
+    assert.equal(res.statusCode, 202);
     assert.equal(res.payload?.ok, true);
+    assert.equal(res.payload?.accepted, true);
+    await new Promise((resolve) => setImmediate(resolve));
     assert.equal(runtimeSettings.location, "new-york");
     assert.equal(runtimeSettings.deploymentProfile, "consolidated");
     assert.ok(
@@ -236,7 +239,8 @@ function createMockRes() {
 
   {
     const req = createMockReq({
-      configuration: { name: "invalid-template", sharded: false }
+      configuration: { name: "invalid-template", sharded: false },
+      progressToken: "parity-invalid-token"
     });
     const res = createMockRes();
     await applyHandler(req, res);

@@ -1,4 +1,5 @@
 const { markConfigurationApplySucceeded } = require("../lib/configurationSessionState");
+const deploymentProgressHub = require("../lib/deploymentProgressHub");
 const { requireUiControl } = require("../lib/uiControlService");
 
 function registerConfigurationRoutes(app, deps) {
@@ -70,10 +71,12 @@ function registerConfigurationRoutes(app, deps) {
 
   app.post("/api/configurations/apply", requireUiControl, async (req, res) => {
     const { configurationId, configuration, progressToken } = req.body || {};
-    // No per-socket inactivity cap while the handler runs; long compose/bootstrap work can be silent on the wire.
-    // If a reverse proxy returns "upstream request timeout", raise its read/route timeout to match (see LONG_HTTP_TIMEOUT_MS on the server).
-    req.socket.setTimeout(0);
+    const token = typeof progressToken === "string" ? progressToken.trim() : "";
     try {
+      if (!token) {
+        res.status(400).json({ ok: false, error: "progressToken is required" });
+        return;
+      }
       let selectedConfiguration = configuration;
       if (configurationId) {
         selectedConfiguration = await getTemplateById(configurationId);
@@ -82,17 +85,45 @@ function registerConfigurationRoutes(app, deps) {
         res.status(400).json({ ok: false, error: "configuration or configurationId is required" });
         return;
       }
-      const result = await applyTemplateAndRebuild(selectedConfiguration, {
-        progressToken: typeof progressToken === "string" ? progressToken.trim() : ""
-      });
-      markConfigurationApplySucceeded();
-      const appliedId = configurationId ? normalizeAppliedTemplateFilename(configurationId) : null;
-      await setLastAppliedTemplateId(appliedId);
-      res.json({
+      const validation = await validateTemplatePayload(selectedConfiguration);
+      if (!validation.ok) {
+        res.status(400).json({
+          ok: false,
+          error: `Template validation failed:\n- ${validation.errors.join("\n- ")}`,
+          validationErrors: validation.errors
+        });
+        return;
+      }
+
+      deploymentProgressHub.markDeploymentInFlight(token);
+      res.status(202).json({
         ok: true,
-        ...result,
-        lastAppliedTemplateId: appliedId
+        accepted: true,
+        progressToken: token
       });
+
+      void (async () => {
+        try {
+          const result = await applyTemplateAndRebuild(selectedConfiguration, {
+            progressToken: token,
+            suppressProgressComplete: true
+          });
+          if (result === null) {
+            return;
+          }
+          markConfigurationApplySucceeded();
+          const appliedId = configurationId ? normalizeAppliedTemplateFilename(configurationId) : null;
+          await setLastAppliedTemplateId(appliedId);
+          deploymentProgressHub.emitComplete(token, {
+            ok: true,
+            ...result,
+            lastAppliedTemplateId: appliedId
+          });
+        } catch (error) {
+          const validationErrors = Array.isArray(error?.validationErrors) ? error.validationErrors : undefined;
+          deploymentProgressHub.emitFatal(token, error.message, validationErrors);
+        }
+      })();
     } catch (error) {
       const validationErrors = Array.isArray(error?.validationErrors) ? error.validationErrors : null;
       res.status(validationErrors ? 400 : 500).json({

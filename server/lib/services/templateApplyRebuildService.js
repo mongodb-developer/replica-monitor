@@ -368,7 +368,7 @@ function createTemplateApplyRebuildService(deps) {
   }
 
   async function applyTemplateAndRebuild(template, options = {}) {
-    const { progressToken } = options;
+    const { progressToken, suppressProgressComplete = false } = options;
     const progress = progressToken ? createProgressEmitter(progressToken) : null;
     try {
       if (progress) {
@@ -408,19 +408,25 @@ function createTemplateApplyRebuildService(deps) {
 
       await runStep(progress, "finalize", "Apply election timeout and network emulation", () => finalizeTemplateApply());
 
-      if (progress) {
-        progress.markStepDone("deployment_completed", "Deployment Completed");
-        progress.complete();
-      }
-
-      return {
+      const successPayload = {
         ...applyResult,
         rebuilt: true,
         message: "Template applied, stack rebuilt, and topology reconciled."
       };
+
+      if (progress) {
+        progress.markStepDone("deployment_completed", "Deployment Completed");
+        if (!suppressProgressComplete) {
+          progress.complete(successPayload);
+        }
+      }
+
+      return successPayload;
     } catch (e) {
       if (progress) {
-        progress.abort();
+        const validationErrors = Array.isArray(e?.validationErrors) ? e.validationErrors : undefined;
+        progress.fatal(e?.message || String(e), validationErrors);
+        return null;
       }
       throw e;
     }
