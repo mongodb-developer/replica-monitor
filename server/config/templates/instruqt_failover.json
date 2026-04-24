@@ -1,0 +1,89 @@
+{
+    "version": 1,
+    "name": "Architect Day Failover Effects Lab",
+    "description": "Three-node replica set in a single data center. Appserver in an adjacent data center",
+    "dataCenters": [
+      {
+        "id": "amer-austin-us",
+        "region": "AMER",
+        "name": "US_AUSTIN",
+        "city": "Austin",
+        "country": "US",
+        "lat": 30.2672,
+        "lng": -97.7431
+      },
+      {
+        "id": "amer-denver-us",
+        "region": "AMER",
+        "name": "US_DENVER",
+        "city": "Denver",
+        "country": "US",
+        "lat": 39.7643918,
+        "lng": -105.0195608
+      },
+      {
+        "id": "apac-bangalore-in",
+        "region": "APAC",
+        "name": "IN_BANGALORE",
+        "city": "Bangalore",
+        "country": "IN",
+        "lat": 12.9716,
+        "lng": 77.5946
+      },
+      {
+        "id": "latam-buenos-aires-ar",
+        "region": "LATAM",
+        "name": "AR_BUENOS_AIRES",
+        "city": "Buenos Aires",
+        "country": "AR",
+        "lat": -34.6037,
+        "lng": -58.3816
+      }
+    ],
+    "applicationServerLocation": "amer-denver-us",
+    "electionTimeoutMs": 5000,
+    "writeConcern": "majority",
+    "readConcern": "local",
+    "readPreference": "majority",
+    "latencies": {
+      "intraRegionMs": {
+        "amer-net": 25,
+        "emea-net": 25,
+        "apac-net": 25,
+        "latam-net": 25
+      },
+      "interRegionMs": {
+        "amer-emea-net": 75,
+        "amer-apac-net": 150,
+        "amer-latam-net": 120,
+        "latam-emea-net": 150,
+        "latam-apac-net": 150,
+        "emea-apac-net": 210
+      }
+    },
+    "sharded": false,
+    "replicaSet": {
+      "name": "amer-rs",
+      "nodes": [
+        {
+            "name": "AUS1",
+            "type": "voting",
+            "priority": 2,
+            "dataCenter": "amer-austin-us"
+        },
+        {
+            "name": "AUS2",
+            "type": "voting",
+            "priority": 1,
+            "dataCenter": "amer-austin-us"
+        },
+        {
+            "name": "AUS3",
+            "type": "voting",
+            "priority": 1,
+            "dataCenter": "amer-austin-us"
+        }
+      ]
+    }
+  }
+  
