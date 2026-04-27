@@ -29,8 +29,7 @@ function rsSummary() {
     primaryName: primary ? primary.name : null
   };
 
-  //print(JSON.stringify(payload));
-  printjson(payload);
+  print(JSON.stringify(payload, null, 2));
 }
 
 rsSummary();
