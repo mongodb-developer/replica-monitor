@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Mongo Replica Set Monitor</title>
+    <title>MongoDB Cluster Monitor</title>
     <link rel="stylesheet" href="/vendor/leaflet/leaflet.css" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
@@ -11,7 +11,7 @@
     <main class="container">
       <header class="page-header">
         <div class="page-title-row">
-          <h1>Mongo Replica Set Monitor</h1>
+          <h1>MongoDB Cluster Monitor</h1>
           <div class="view-toggle" role="group" aria-label="Dashboard layout">
             <button id="standardLayoutBtn" class="view-toggle-btn active" type="button">Node Monitor Layout</button>
             <button id="geographicLayoutBtn" class="view-toggle-btn" type="button">Geographic Layout</button>
@@ -30,8 +30,8 @@
       <div class="dashboard-grid">
         <div class="replica-column">
           <section class="chart">
-            <h2>Replica Topology</h2>
-            <svg id="topology" viewBox="0 0 900 420" role="img" aria-label="Replica set topology"></svg>
+            <h2>Cluster Topology</h2>
+            <svg id="topology" viewBox="0 0 900 420" role="img" aria-label="Cluster topology"></svg>
           </section>
 
           <section id="geographicMapSection" class="table-section hidden">
@@ -367,7 +367,7 @@
             <legend>Replica topology</legend>
             <label class="settings-checkbox-label">
               <input type="checkbox" id="topologyShowShardLabelsCheckbox" name="topologyShowShardLabels" />
-              Show shard names on replica topology nodes
+              Show shard names on cluster topology nodes
             </label>
           </fieldset>
 

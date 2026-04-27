@@ -41,6 +41,7 @@
       }
     ],
     "applicationServerLocation": "amer-denver-us",
+    "userLocation": "US",
     "electionTimeoutMs": 5000,
     "writeConcern": "majority",
     "readConcern": "local",
@@ -66,19 +67,19 @@
       "name": "amer-rs",
       "nodes": [
         {
-            "name": "AUS1",
-            "type": "voting",
-            "priority": 2,
-            "dataCenter": "amer-austin-us"
-        },
-        {
-            "name": "AUS2",
+            "name": "mongo0",
             "type": "voting",
             "priority": 1,
             "dataCenter": "amer-austin-us"
         },
         {
-            "name": "AUS3",
+            "name": "mongo1",
+            "type": "voting",
+            "priority": 1,
+            "dataCenter": "amer-austin-us"
+        },
+        {
+            "name": "mongo2",
             "type": "voting",
             "priority": 1,
             "dataCenter": "amer-austin-us"

@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "name": "Sharded Cluster Save Test Extended",
-  "description": "Three DB nodes - 1 in Seattle, one in Frankfurt, and 1 in Singapore, plus a RO node in Seattle and Singapore. AppServer in SIN, user in India. 1000ms election timeout. Secondary RP, 1 WC, Majority RC. 1 Shard; SH-1.",
+  "name": "Architect Day Large Replica Set Lab",
+  "description": "Baseline five-node single-shard cluster for Zone Sharding demo.",
   "dataCenters": [
     {
       "id": "amer-seattle-us",
@@ -40,13 +40,12 @@
       "lng": -46.6333
     }
   ],
-  "applicationServerLocation": "apac-singapore-sg",
-  "userLocation": "IN",
-  "electionTimeoutMs": 3000,
+  "applicationServerLocation": "amer-seattle-us",
+  "userLocation": "FR",
+  "electionTimeoutMs": 2000,
   "writeConcern": "majority",
   "readConcern": "majority",
-  "readPreference": "secondary",
-  "topologyShowShardLabels": true,
+  "readPreference": "nearest",
   "latencies": {
     "intraRegionMs": {
       "amer-net": 25,
@@ -66,7 +65,7 @@
   "sharded": true,
   "shards": [
     {
-      "name": "SH-1",
+      "name": "shard_amer_emea",
       "nodes": [
         {
           "name": "Default_1",
@@ -82,22 +81,45 @@
         },
         {
           "name": "Default_3",
-          "type": "readOnly",
-          "priority": 0,
-          "dataCenter": "apac-singapore-sg"
-        },
+          "type": "voting",
+          "priority": 1,
+          "dataCenter": "emea-frankfurt-de"
+        }
+      ]
+    },
+    {
+      "name": "shard_apac_latam",
+      "nodes": [
         {
-          "name": "SEA2_RO",
-          "type": "readOnly",
-          "priority": 0,
-          "dataCenter": "amer-seattle-us"
-        },
-        {
-          "name": "SIN2",
+          "name": "Singapore_1",
           "type": "voting",
           "priority": 1,
           "dataCenter": "apac-singapore-sg"
         }
+      ]
+    }
+  ],
+  "zones": [
+    {
+      "name": "zoneuseu",
+      "countries": [
+        "US",
+        "DE",
+        "FR"
+      ],
+      "shards": [
+        "shard_amer_emea"
+      ]
+    },
+    {
+      "name": "zoneasialatam",
+      "countries": [
+        "SG",
+        "BR",
+        "NZ"
+      ],
+      "shards": [
+        "shard_apac_latam"
       ]
     }
   ]
