@@ -42,7 +42,7 @@
     ],
     "applicationServerLocation": "amer-denver-us",
     "userLocation": "US",
-    "electionTimeoutMs": 5000,
+    "electionTimeoutMs": 10000,
     "writeConcern": "majority",
     "readConcern": "local",
     "readPreference": "primary",
@@ -64,7 +64,7 @@
     },
     "sharded": false,
     "replicaSet": {
-      "name": "amer-rs",
+      "name": "mongodb-rs",
       "nodes": [
         {
             "name": "mongo0",

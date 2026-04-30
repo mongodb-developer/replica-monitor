@@ -1,51 +1,51 @@
 {
   "version": 1,
   "name": "Architect Day Large Replica Set Lab",
-  "description": "Baseline five-node single-shard cluster for Zone Sharding demo.",
+  "description": "Baseline five node replica set in three data centers.",
   "dataCenters": [
     {
-      "id": "amer-seattle-us",
+      "id": "us-east-1",
       "region": "AMER",
-      "name": "US_SEATTLE",
-      "city": "Seattle",
+      "name": "US-EAST-1",
+      "city": "Reston",
       "country": "US",
-      "lat": 47.6062,
-      "lng": -122.3321
+      "lat": 38.9767,
+      "lng": -77.3614
     },
     {
-      "id": "emea-frankfurt-de",
-      "region": "EMEA",
-      "name": "DE_FRANKFURT",
-      "city": "Frankfurt",
-      "country": "DE",
-      "lat": 50.1109,
-      "lng": 8.6821
+      "id": "us-east-2",
+      "region": "AMER",
+      "name": "US-EAST-2",
+      "city": "Cleveland",
+      "country": "US",
+      "lat": 41.4993,
+      "lng": -81.6944
     },
     {
-      "id": "apac-singapore-sg",
+      "id": "ca-central-1",
+      "region": "AMER",
+      "name": "CA-CENTRAL-1",
+      "city": "Montreal",
+      "country": "CA",
+      "lat": 45.5017,
+      "lng": -73.5673
+    },
+    {
+      "id": "ap-southeast-2",
       "region": "APAC",
-      "name": "SG_SINGAPORE",
-      "city": "Singapore",
-      "country": "SG",
-      "lat": 1.3521,
-      "lng": 103.8198
-    },
-    {
-      "id": "latam-sao-paulo-br",
-      "region": "LATAM",
-      "name": "BR_SAO_PAULO",
-      "city": "Sao Paulo",
-      "country": "BR",
-      "lat": -23.5505,
-      "lng": -46.6333
+      "name": "AP-SOUTHEAST-2",
+      "city": "Sydney",
+      "country": "AU",
+      "lat": -33.8688,
+      "lng": 151.2093
     }
   ],
-  "applicationServerLocation": "amer-seattle-us",
-  "userLocation": "FR",
-  "electionTimeoutMs": 2000,
+  "applicationServerLocation": "us-east-1",
+  "userLocation": "US",
+  "electionTimeoutMs": 10000,
   "writeConcern": "majority",
   "readConcern": "majority",
-  "readPreference": "nearest",
+  "readPreference": "primary",
   "latencies": {
     "intraRegionMs": {
       "amer-net": 25,
@@ -62,65 +62,40 @@
       "emea-apac-net": 200
     }
   },
-  "sharded": true,
-  "shards": [
-    {
-      "name": "shard_amer_emea",
+  "sharded": false,
+  "replicaSet": {
+      "name": "mongodb-rs",
       "nodes": [
         {
-          "name": "Default_1",
-          "type": "voting",
-          "priority": 2,
-          "dataCenter": "amer-seattle-us"
+            "name": "node1",
+            "type": "voting",
+            "priority": 7,
+            "dataCenter": "us-east-1"
         },
         {
-          "name": "Default_2",
-          "type": "voting",
-          "priority": 1,
-          "dataCenter": "emea-frankfurt-de"
+            "name": "node2",
+            "type": "voting",
+            "priority": 7,
+            "dataCenter": "us-east-1"
         },
         {
-          "name": "Default_3",
-          "type": "voting",
-          "priority": 1,
-          "dataCenter": "emea-frankfurt-de"
-        }
-      ]
-    },
-    {
-      "name": "shard_apac_latam",
-      "nodes": [
+            "name": "node3",
+            "type": "voting",
+            "priority": 6,
+            "dataCenter": "us-east-2"
+        },
         {
-          "name": "Singapore_1",
+          "name": "node4",
           "type": "voting",
-          "priority": 1,
-          "dataCenter": "apac-singapore-sg"
+          "priority": 6,
+          "dataCenter": "us-east-2"
+        },
+        {
+            "name": "node5",
+            "type": "voting",
+            "priority": 5,
+            "dataCenter": "ca-central-1"
         }
       ]
     }
-  ],
-  "zones": [
-    {
-      "name": "zoneuseu",
-      "countries": [
-        "US",
-        "DE",
-        "FR"
-      ],
-      "shards": [
-        "shard_amer_emea"
-      ]
-    },
-    {
-      "name": "zoneasialatam",
-      "countries": [
-        "SG",
-        "BR",
-        "NZ"
-      ],
-      "shards": [
-        "shard_apac_latam"
-      ]
-    }
-  ]
 }

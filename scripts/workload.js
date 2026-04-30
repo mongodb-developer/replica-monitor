@@ -1,18 +1,8 @@
 const fs = require("fs/promises");
 const { MongoClient, ReadPreference } = require("mongodb");
 
-// ////////////////////////////////////////////////////////////////////////////
-//
-// The URI doesn't need to include all nodes in the replica set, so long as
-// at least one (available node) is included and the replica set name is
-// specified then the replica set will fill in the rest.
-//
 const uri =
-  "mongodb://mongo0:27017,mongo1:27017,mongo2:27017/?authSource=admin&replicaSet=amer-rs";
-// // DEMO 4
-// const uri = "mongodb://Default_1:27017,Default_2:27017,Default_3:27017/?authSource=admin&replicaSet=mongodb-repl-set&readPreference=primaryPreferred";
-//
-// ////////////////////////////////////////////////////////////////////////////
+  "mongodb://node1:27017,node2:27017,node_au1:27017,node_au2:27017,node_au3:27017/?authSource=admin&replicaSet=mongodb-rs";
 
 const writeUri = String(process.env.MDB_WRITE_URI || "")
   .trim()
