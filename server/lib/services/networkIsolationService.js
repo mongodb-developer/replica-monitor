@@ -65,6 +65,7 @@ function createNetworkIsolationService(deps) {
     if (!isolatedContainers.has(getLastKnownPrimaryService())) {
       stopPrimaryReelectionChecks();
     }
+    await runNetemLatencyScript("apply", { strict: false, targetContainers: [containerName] });
     return result;
   }
 
@@ -169,6 +170,9 @@ function createNetworkIsolationService(deps) {
     const settingsForRecovery = await getApplicationServerSettings();
     const asNames = listApplicationServerServiceNames(settingsForRecovery);
     const recoveredAppServices = result.containers.filter((n) => asNames.includes(n));
+    const recoveredMongoNodes = result.containers.filter(
+      (n) => !asNames.includes(n) && n !== CONFIG_SERVER_CONTAINER_NAME
+    );
     const configServerExists = await doesContainerExist(CONFIG_SERVER_CONTAINER_NAME);
     let mongosStoppedForRecovery = false;
 
@@ -178,10 +182,11 @@ function createNetworkIsolationService(deps) {
     }
 
     try {
-      if (recoveredAppServices.length > 0) {
+      const allRecoveredTargets = [...recoveredAppServices, ...recoveredMongoNodes];
+      if (allRecoveredTargets.length > 0) {
         await runNetemLatencyScript("apply", {
           strict: false,
-          targetContainers: recoveredAppServices
+          targetContainers: allRecoveredTargets
         });
       }
     } finally {

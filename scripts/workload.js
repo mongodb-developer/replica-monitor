@@ -2,7 +2,7 @@ const fs = require("fs/promises");
 const { MongoClient, ReadPreference } = require("mongodb");
 
 const uri =
-  "mongodb://node1:27017,node2:27017,node_au1:27017,node_au2:27017,node_au3:27017/?authSource=admin&replicaSet=mongodb-rs";
+  "mongodb://mongo0:27017,mongo1:27017,mongo2:27017/?authSource=admin&replicaSet=mongodb-rs";
 
 const writeUri = String(process.env.MDB_WRITE_URI || "")
   .trim()
@@ -221,7 +221,7 @@ async function main() {
     try {
       const targetTag = buildReaderTag(target);
       console.log("Connecting to read target:", target.uri);
-      const client = new MongoClient(target.uri,{monitorCommands: true});
+      const client = new MongoClient(target.uri,{monitorCommands: true, localThresholdMS: 5});
       await client.connect();
       const readDb = client.db("architect_day");
       const readCol = readDb.collection("counter");
@@ -272,7 +272,7 @@ async function main() {
         // Ignore close errors; continue reconnect.
       }
     }
-    const client = new MongoClient(nextUri, { monitorCommands: true });
+    const client = new MongoClient(nextUri, { monitorCommands: true, localThresholdMS: 5 });
     await client.connect();
     const nextTag = buildReaderTag({ name: nextName, kind: nextKind });
     client.on("commandSucceeded", (event) => {

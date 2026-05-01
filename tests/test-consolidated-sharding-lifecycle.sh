@@ -38,6 +38,7 @@ const { createShardingLifecycleService } = require("./server/lib/services/shardi
     configureShardServerMongodConfigs: async () => {},
     reconcileReplicaNodeNetworks: async () => {},
     syncDataCenterHostsEntries: async () => {},
+    writeNetemTargetContainersFile: async () => {},
     runNetemLatencyScript: async () => {},
     startConfigServerMongosProcess: async () => {},
     fetchReplicaStatus: async () => ({

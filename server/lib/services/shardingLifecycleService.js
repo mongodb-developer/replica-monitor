@@ -7,6 +7,7 @@ function buildShardReplicaSetPlan(skipElectionTimeoutApply) {
     { id: "config_server_storage", label: "Configure config server storage" },
     { id: "config_server_running", label: "Ensure config server is running" },
     { id: "shard_mongod_configs", label: "Configure shard MongoDB processes" },
+    { id: "apply_netem", label: "Re-apply network latency rules" },
     { id: "start_mongos", label: "Start config server routing (mongos)" },
     { id: "add_shard", label: "Add shard to cluster" },
     { id: "shard_collection", label: "Shard application collection" },
@@ -41,6 +42,7 @@ function createShardingLifecycleService(deps) {
     configureShardServerMongodConfigs,
     reconcileReplicaNodeNetworks,
     syncDataCenterHostsEntries,
+    writeNetemTargetContainersFile,
     runNetemLatencyScript,
     startConfigServerMongosProcess,
     fetchReplicaStatus,
@@ -136,6 +138,11 @@ function createShardingLifecycleService(deps) {
         assertConfigServerMongodProcessRunning()
       );
       await run("shard_mongod_configs", "Configure shard MongoDB processes", () => configureShardServerMongodConfigs());
+      await run("apply_netem", "Re-apply network latency rules", async () => {
+        const currentSettings = await getApplicationServerSettings();
+        await writeNetemTargetContainersFile(currentSettings);
+        await runNetemLatencyScript("apply", { strict: false });
+      });
       await run("start_mongos", "Start config server routing (mongos)", () =>
         startConfigServerMongosProcess({ force: true })
       );
