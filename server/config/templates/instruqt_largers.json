@@ -81,8 +81,8 @@
         {
             "name": "node3",
             "type": "voting",
-            "priority": 6,
-            "dataCenter": "us-east-2"
+            "priority": 7,
+            "dataCenter": "us-east-1"
         },
         {
           "name": "node4",
@@ -93,8 +93,8 @@
         {
             "name": "node5",
             "type": "voting",
-            "priority": 5,
-            "dataCenter": "ca-central-1"
+            "priority": 6,
+            "dataCenter": "us-east-2"
         }
       ]
     }

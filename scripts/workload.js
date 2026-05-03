@@ -2,7 +2,7 @@ const fs = require("fs/promises");
 const { MongoClient, ReadPreference } = require("mongodb");
 
 const uri =
-  "mongodb://mongo0:27017,mongo1:27017,mongo2:27017/?authSource=admin&replicaSet=mongodb-rs";
+  "mongodb://ConfigServer:27017?authSource=admin";
 
 const writeUri = String(process.env.MDB_WRITE_URI || "")
   .trim()
