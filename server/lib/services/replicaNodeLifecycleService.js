@@ -43,6 +43,7 @@ function createReplicaNodeLifecycleService(deps) {
     refreshWorkloadMongoConnectivity,
     applyPersistedReplicaSetElectionTimeout,
     runNetemLatencyScript,
+    writeNetemTargetContainersFile,
     syncLegacyAppMongoUri,
     removeContainer,
     isolatedContainers,
@@ -224,9 +225,10 @@ echo "$val"`
     isolatedContainers.delete(serviceName);
     await reconcileReplicaNodeNetworks();
     await syncDataCenterHostsEntries();
+    await persistRemovedReplicaNodeFromTemplateTopology(serviceName);
+    await writeNetemTargetContainersFile(await getApplicationServerSettings());
     await runNetemLatencyScript("apply", { strict: false });
     await syncLegacyAppMongoUri();
-    await persistRemovedReplicaNodeFromTemplateTopology(serviceName);
     return { service: serviceName, primaryService, removalResult };
   }
 
@@ -381,7 +383,6 @@ echo "$val"`
         restartWhenRunning: false
       });
       await applyPersistedReplicaSetElectionTimeout();
-      await runNetemLatencyScript("apply", { strict: false });
       await persistAddedReplicaNodeToTemplateTopology(
         serviceName,
         role,
@@ -390,6 +391,8 @@ echo "$val"`
         targetShardName,
         creatingNewShard
       );
+      await writeNetemTargetContainersFile(await getApplicationServerSettings());
+      await runNetemLatencyScript("apply", { strict: false, targetContainers: [serviceName] });
       return {
         service: serviceName,
         role,

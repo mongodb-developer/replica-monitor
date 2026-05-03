@@ -306,6 +306,15 @@ function createComposeStackGenerationService(deps) {
         names.push(n);
       }
     }
+    const collected = collectReplicaNodesFromSettings(settings);
+    if (!collected.error && Array.isArray(collected.nodes)) {
+      for (const node of collected.nodes) {
+        const name = String(node?.name || "").trim();
+        if (name && !names.includes(name)) {
+          names.push(name);
+        }
+      }
+    }
     const outPath = path.join(PROJECT_ROOT, "server/data/netem-target-containers.txt");
     await fs.writeFile(outPath, `${names.join("\n")}\n`, "utf8");
     return outPath;
