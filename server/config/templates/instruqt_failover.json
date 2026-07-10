@@ -1,6 +1,6 @@
 {
     "version": 1,
-    "name": "Architect Day Failover Effects Lab",
+    "name": "Architect Day Failover & Effects Lab",
     "description": "Three-node replica set in a single data center. Appserver in an adjacent data center",
     "dataCenters": [
       {
